@@ -1,4 +1,4 @@
-import {useState, useEffect, use} from 'react';
+import {useState, useEffect} from 'react';
 import { prefs, PREF_KEYS } from '../prefs/prefHelper';
 import { getXmlList, requestXml } from '../api/magidClient';
 import type { XmlEntry } from '../types/protocol';

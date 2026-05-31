@@ -97,7 +97,7 @@ export default function App() {
           onBaseUrlChange={handleBaseUrlChange}
           onClose={() => setShowOptions(false)}
           onMessage={showMessage}
-          magidStore={useMagidStore()}
+          magidStore={useMagidStore}
         />
       )}
     </div>
