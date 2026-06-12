@@ -5,7 +5,8 @@ export interface MenuOption {
 }
 
 export interface MenuResponse {
-  menu: string;
+  menu?: string;
+  'menu-name'?: string;
   'menu-description'?: string;
   'menu-options'?: MenuOption[];
   'menu-class'?: string;
@@ -31,6 +32,8 @@ export interface CommandResponse {
 
 export interface ConfigData {
   'css-files'?: string;
+  'css-files-react'?: string;
+  'freshness-key'?: string;
   'view-port'?: string;
   'menu-position'?: string;
   [key: string]: string | undefined;

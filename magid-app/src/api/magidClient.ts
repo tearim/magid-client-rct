@@ -27,7 +27,7 @@ export async function sendCommand(
 ): Promise<string> {
   const url = new URL(baseUrl);
   url.searchParams.set('cmd', cmd);
-  url.searchParams.set('css-family', 'normal,react');
+  url.searchParams.set('client-type', 'react');
   if (extra) {
     for (const [k, v] of Object.entries(extra)) {
       url.searchParams.set(k, v);

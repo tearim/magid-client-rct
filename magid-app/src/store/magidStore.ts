@@ -7,6 +7,7 @@ import type { ConfigData } from '../types/protocol';
 interface MagidState {
   baseUrl: string;
   connected: boolean;
+  currentScene: string;
   elements: ParsedElement[];
   envVars: Record<string, string>;
   cssFileSources: Record<string, string>;
@@ -62,12 +63,13 @@ function newCssFiles(cssFileNames: string): string {
 function applyConfig(data: ConfigData, get: () => MagidState) {
   const { addCssFile, setVar, baseUrl } = get();
 
-  if (data['css-files'] ) {
-    fetchAndInjectCss(newCssFiles(data['css-files']), baseUrl, addCssFile);
+  const cssFiles = data['css-files-react'] ?? data['css-files'];
+  if (cssFiles) {
+    fetchAndInjectCss(newCssFiles(cssFiles), baseUrl, addCssFile);
   }
 
   for (const [k, v] of Object.entries(data)) {
-    if (k !== 'css-files' && v !== undefined) {
+    if (k !== 'css-files' && k !== 'css-files-react' && v !== undefined) {
       setVar(k, v);
     }
   }
@@ -76,6 +78,7 @@ function applyConfig(data: ConfigData, get: () => MagidState) {
 export const useMagidStore = create<MagidState>((set, get) => ({
   baseUrl: 'http://localhost:8090',
   connected: false,
+  currentScene: '',
   elements: [],
   envVars: {},
   cssFileSources: {},
@@ -102,12 +105,20 @@ export const useMagidStore = create<MagidState>((set, get) => ({
     for (const el of parsed) {
       if (el.type === 'config') {
         applyConfig(el.data.config, get);
+      } else if (el.type === 'menu') {
+        const name = el.data['menu-name'] ?? el.data.menu;
+        if (name) set({ currentScene: name });
+        renderElements.push(el);
       } else if (el.type === 'responses') {
         const inner: ParsedElement[] = [];
         for (const child of el.elements) {
           if (child.type === 'config') {
             applyConfig(child.data.config, get);
           } else {
+            if (child.type === 'menu') {
+              const name = child.data['menu-name'] ?? child.data.menu;
+              if (name) set({ currentScene: name });
+            }
             inner.push(child);
           }
         }
@@ -131,8 +142,14 @@ export const useMagidStore = create<MagidState>((set, get) => ({
         get().clearCssFiles();
         clearCssFiles();
     }
+    const extra: Record<string, string> = {};
+    const freshnessKey = get().getVar('freshness-key');
+    if (freshnessKey) extra['freshness-key'] = freshnessKey;
+    const currentScene = get().currentScene;
+    if (currentScene) extra['current-scene'] = currentScene;
+
     try {
-      const raw = await apiSendCommand(baseUrl, cmd);
+      const raw = await apiSendCommand(baseUrl, cmd, extra);
       loadResponse(raw);
       set({ connected: true });
     } catch (e) {
