@@ -8,7 +8,7 @@ import { clientConfig } from './config/clientConfig';
 import styles from './App.module.css';
 
 export default function App() {
-  const { elements, isLoading, error, baseUrl, setBaseUrl, sendCommand, connected } =
+  const { elements, isLoading, error, baseUrl, setBaseUrl, sendCommand, connected, menuClass } =
     useMagidStore();
 
   const [showOptions, setShowOptions]   = useState(false);
@@ -105,7 +105,7 @@ export default function App() {
         </div>
       </header>
 
-      <main className={styles.main}>
+      <main className={[styles.main, menuClass].filter(Boolean).join(' ')}>
         <MagidRoot elements={elements} />
       </main>
 
