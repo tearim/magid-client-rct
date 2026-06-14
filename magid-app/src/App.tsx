@@ -4,6 +4,7 @@ import { OptionsModal } from './components/OptionsModal';
 import { useMagidStore } from './store/magidStore';
 import { prefs, PREF_KEYS } from './prefs/prefHelper';
 import { serverStatus, requestXml } from './api/magidClient';
+import { clientConfig } from './config/clientConfig';
 import styles from './App.module.css';
 
 export default function App() {
@@ -58,6 +59,11 @@ export default function App() {
     void sendCommand('');
   };
 
+  const handleResetServer = async () => {
+    await sendCommand('reload-xml');
+    await sendCommand('');
+  };
+
   const handleBaseUrlChange = (url: string) => {
     setBaseUrl(url);
   };
@@ -77,13 +83,25 @@ export default function App() {
           {statusMsg && <span className={styles.statusMsg}>{statusMsg}</span>}
           {isLoading && <span className={styles.spinner} aria-label="Loading" />}
           <span className={`${styles.connDot} ${connected ? styles.connDotOn : ''}`} title={connected ? 'Connected' : 'Disconnected'} />
-          <button
-            className={styles.connectBtn}
-            onClick={handleConnect}
-            disabled={isLoading}
-          >
-            Connect
-          </button>
+          {clientConfig.showResetServerButton && (
+            <button
+              className={styles.resetBtn}
+              onClick={handleResetServer}
+              disabled={isLoading}
+              title="Reload the XML and restart the story from the beginning"
+            >
+              Reset server
+            </button>
+          )}
+          {clientConfig.showConnectButton && (
+            <button
+              className={styles.connectBtn}
+              onClick={handleConnect}
+              disabled={isLoading}
+            >
+              Connect
+            </button>
+          )}
         </div>
       </header>
 
@@ -97,7 +115,6 @@ export default function App() {
           onBaseUrlChange={handleBaseUrlChange}
           onClose={() => setShowOptions(false)}
           onMessage={showMessage}
-          magidStore={useMagidStore}
         />
       )}
     </div>

@@ -3,17 +3,16 @@ import { prefs, PREF_KEYS } from '../prefs/prefHelper';
 import { getXmlList, requestXml } from '../api/magidClient';
 import type { XmlEntry } from '../types/protocol';
 import styles from './OptionsModal.module.css';
-import {useMagidStore} from "../store/magidStore.ts";
+import { useMagidStore } from '../store/magidStore';
 
 interface Props {
   baseUrl: string;
   onBaseUrlChange: (url: string) => void;
   onClose: () => void;
   onMessage: (msg: string) => void;
-  magidStore: typeof useMagidStore;
 }
 
-export function OptionsModal({ baseUrl, onBaseUrlChange, onClose, onMessage, magidStore }: Props) {
+export function OptionsModal({ baseUrl, onBaseUrlChange, onClose, onMessage }: Props) {
   const [serverAddr, setServerAddr]     = useState(() => prefs.get(PREF_KEYS.SERVER_ADDRESS, baseUrl));
   const [xmlList, setXmlList]           = useState<XmlEntry[]>([]);
   const [selectedXml, setSelectedXml]  = useState(() => prefs.get(PREF_KEYS.STORY_XML));
@@ -23,11 +22,9 @@ export function OptionsModal({ baseUrl, onBaseUrlChange, onClose, onMessage, mag
   const [ignoreMaximize, setIgnoreMaximize]   = useState(() => prefs.getBoolean(PREF_KEYS.VIEWPORT_IGNORE_MAXIMIZE));
   const [volume, setVolume]            = useState(() => prefs.getDouble(PREF_KEYS.MUSIC_VOLUME) || 0.8);
   const [loadingXmls, setLoadingXmls] = useState(false);
-  magidStore = useMagidStore;
-
   useEffect(() => {
     setLoadingXmls(true);
-    magidStore().clearCssFiles();
+    useMagidStore.getState().clearCssFiles();
     getXmlList(serverAddr)
       .then(setXmlList)
       .catch(() => {})

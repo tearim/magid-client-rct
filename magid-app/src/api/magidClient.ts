@@ -54,7 +54,3 @@ export async function serverStatus(baseUrl: string): Promise<ServerStatus> {
 export async function requestXml(baseUrl: string, xmlPath: string): Promise<string> {
   return sendCommand(baseUrl, 'set-xml', { path: xmlPath });
 }
-
-export async function reloadXml(baseUrl: string): Promise<string> {
-  return sendCommand(baseUrl, 'reload-xml');
-}

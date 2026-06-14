@@ -93,6 +93,27 @@
   cursor: not-allowed;
 }
 
+.resetBtn {
+  background: transparent;
+  border: 1px solid #7a4a1a;
+  color: #c8884a;
+  padding: 0.3rem 0.75rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.8rem;
+}
+
+.resetBtn:hover:not(:disabled) {
+  background: #2a1a08;
+  color: #ffaa66;
+  border-color: #aa6622;
+}
+
+.resetBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .main {
   flex: 1;
   display: flex;
