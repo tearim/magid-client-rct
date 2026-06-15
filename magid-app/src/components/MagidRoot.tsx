@@ -7,32 +7,34 @@ import { ResponsesContainer } from './ResponsesContainer';
 import { useMagidCommand } from '../hooks/useMagidCommand';
 import styles from './MagidRoot.module.css';
 
+interface ElementProps {
+  el: ParsedElement;
+  onVisualComplete?: () => void;
+}
+
+export function MagidElement({ el, onVisualComplete }: ElementProps) {
+  const sendCmd = useMagidCommand();
+  switch (el.type) {
+    case 'menu':      return <MenuScene data={el.data} />;
+    case 'narration': return <NarrationText data={el.data} />;
+    case 'command':   return <CommandButton data={el.data} onClick={sendCmd} />;
+    case 'visual':    return <VisualFade data={el.data} onComplete={onVisualComplete} />;
+    case 'responses': return <ResponsesContainer elements={el.elements} />;
+    default:          return null;
+  }
+}
+
 interface Props {
   elements: ParsedElement[];
   onVisualComplete?: () => void;
 }
 
 export function MagidRoot({ elements, onVisualComplete }: Props) {
-  const sendCmd = useMagidCommand();
-
   return (
     <div className={`magid-response-pane ${styles.responsePane}`}>
-      {elements.map((el, i) => {
-        switch (el.type) {
-          case 'menu':
-            return <MenuScene key={i} data={el.data} />;
-          case 'narration':
-            return <NarrationText key={i} data={el.data} />;
-          case 'command':
-            return <CommandButton key={i} data={el.data} onClick={sendCmd} />;
-          case 'visual':
-            return <VisualFade key={i} data={el.data} onComplete={onVisualComplete} />;
-          case 'responses':
-            return <ResponsesContainer key={i} elements={el.elements} />;
-          default:
-            return null;
-        }
-      })}
+      {elements.map((el, i) => (
+        <MagidElement key={i} el={el} onVisualComplete={onVisualComplete} />
+      ))}
     </div>
   );
 }

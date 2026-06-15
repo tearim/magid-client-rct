@@ -9,6 +9,7 @@ interface MagidState {
   baseUrl: string;
   connected: boolean;
   currentScene: string;
+  menuClass: string;
   elements: ParsedElement[];
   envVars: Record<string, string>;
   cssFileSources: Record<string, string>;
@@ -47,6 +48,7 @@ export const useMagidStore = create<MagidState>((set, get) => ({
   baseUrl: 'http://localhost:8090',
   connected: false,
   currentScene: '',
+  menuClass: '',
   elements: [],
   envVars: {},
   cssFileSources: {},
@@ -75,7 +77,7 @@ export const useMagidStore = create<MagidState>((set, get) => ({
         applyConfig(el.data.config, get);
       } else if (el.type === 'menu') {
         const name = el.data['menu-name'] ?? el.data.menu;
-        if (name) set({ currentScene: name });
+        if (name) set({ currentScene: name, menuClass: el.data['menu-class'] ?? '' });
         renderElements.push(el);
       } else if (el.type === 'responses') {
         const inner: ParsedElement[] = [];
@@ -85,7 +87,7 @@ export const useMagidStore = create<MagidState>((set, get) => ({
           } else {
             if (child.type === 'menu') {
               const name = child.data['menu-name'] ?? child.data.menu;
-              if (name) set({ currentScene: name });
+              if (name) set({ currentScene: name, menuClass: child.data['menu-class'] ?? '' });
             }
             inner.push(child);
           }
@@ -103,12 +105,12 @@ export const useMagidStore = create<MagidState>((set, get) => ({
   },
   sendCommand: async (cmd: string) => {
     const { baseUrl, loadResponse } = get();
-    set({ isLoading: true, error: null });
+    set({ isLoading: true, error: null, elements: [] });
     if (get().commandRequiresCssReloading(cmd)) {
       get().clearCssFiles();
       const envVars = { ...get().envVars };
       delete envVars['freshness-key'];
-      set({ currentScene: '', envVars });
+      set({ currentScene: '', menuClass: '', envVars });
     }
     const extra: Record<string, string> = {};
     const freshnessKey = get().getVar('freshness-key');

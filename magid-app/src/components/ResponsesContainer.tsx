@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef } from 'react';
 import type { ParsedElement } from '../lib/elementFactory';
-import { MagidRoot } from './MagidRoot';
+import { MagidElement } from './MagidRoot';
 
 interface Props {
   elements: ParsedElement[];
@@ -47,9 +47,9 @@ export function ResponsesContainer({ elements }: Props) {
         const isBlockingVisual =
           el.type === 'visual' && el.data['transition-blocking'] === 'true';
         return (
-          <MagidRoot
+          <MagidElement
             key={i}
-            elements={[el]}
+            el={el}
             onVisualComplete={isBlockingVisual ? handleComplete : undefined}
           />
         );

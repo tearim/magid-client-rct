@@ -36,10 +36,8 @@ export function MenuScene({ data }: Props) {
   const options = data['menu-options'] ?? [];
   const n = options.length;
 
-  const menuClasses = ['magid-menu-textarea', data['menu-class']].filter(Boolean).join(' ');
-
   return (
-    <div className={menuClasses}>
+    <div className="magid-menu-textarea">
       {rawDesc && (
         <div ref={descRef} className="magid-menu-description">
           {displayed}

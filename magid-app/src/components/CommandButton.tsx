@@ -1,6 +1,7 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import type { CommandResponse } from '../types/protocol';
 import { useMagidStore } from '../store/magidStore';
+import { parseMagidCss } from '../lib/magidCss';
 
 interface Props {
   data: CommandResponse;
@@ -12,7 +13,6 @@ export function CommandButton({ data, onClick, positionClass }: Props) {
   const isLoading = useMagidStore((s) => s.isLoading);
   const deferMs = data['command-defer'] ? parseInt(data['command-defer'], 10) : 0;
   const [visible, setVisible] = useState(deferMs === 0);
-  const btnRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     if (deferMs === 0) return;
@@ -20,22 +20,17 @@ export function CommandButton({ data, onClick, positionClass }: Props) {
     return () => clearTimeout(t);
   }, [deferMs]);
 
-  useEffect(() => {
-    if (btnRef.current && data['command-css']) {
-      btnRef.current.style.cssText = data['command-css'];
-    }
-  }, [data]);
-
   if (!visible) return null;
 
   const classes = ['magid-common-button', data['command-class'], positionClass]
     .filter(Boolean)
     .join(' ');
+  const style = data['command-css'] ? parseMagidCss(data['command-css']) : undefined;
 
   return (
     <button
-      ref={btnRef}
       className={classes}
+      style={style}
       disabled={isLoading}
       onClick={() => onClick(data['command-name'] ?? (data as unknown as Record<string, string>)['command-text'] ?? '')}
       aria-label={data['command-description']}
