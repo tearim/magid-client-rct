@@ -19,6 +19,9 @@ This project mirrors an earlier JavaFX desktop client and is designed to make Ma
 
 Magid is a declarative storytelling engine centered on XML/Markdown-authored stories.
 
+<img width="80%" alt="Magid screenshot that shows how XML becomes client response" src="https://github.com/user-attachments/assets/b6b5f35e-a9f7-4c0c-9395-05a06d1f91a8" />
+
+
 At runtime, the server exposes an HTTP API and returns JSON responses that describe what the client should render:
 
 - narration/text blocks
