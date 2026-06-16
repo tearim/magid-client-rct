@@ -3,6 +3,7 @@ import type { NarrationResponse } from '../types/protocol';
 import { useTypewriter } from '../hooks/useTypewriter';
 import { prefs, PREF_KEYS } from '../prefs/prefHelper';
 import { parseMagidCss } from '../lib/magidCss';
+import { renderWithBreaks } from '../lib/renderText';
 
 interface Props {
   data: NarrationResponse;
@@ -41,7 +42,7 @@ export function NarrationText({ data }: Props) {
 
   return (
     <div className={classes} style={style}>
-      {displayed}
+      {renderWithBreaks(displayed)}
     </div>
   );
 }

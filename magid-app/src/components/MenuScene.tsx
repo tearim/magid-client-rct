@@ -5,6 +5,7 @@ import { useAudio } from '../hooks/useAudio';
 import { useTypewriter } from '../hooks/useTypewriter';
 import { prefs, PREF_KEYS } from '../prefs/prefHelper';
 import { useMagidCommand } from '../hooks/useMagidCommand';
+import { renderWithBreaks } from '../lib/renderText';
 
 interface Props {
   data: MenuResponse;
@@ -40,7 +41,7 @@ export function MenuScene({ data }: Props) {
     <div className="magid-menu-textarea">
       {rawDesc && (
         <div ref={descRef} className="magid-menu-description">
-          {displayed}
+          {renderWithBreaks(displayed)}
         </div>
       )}
       <div className="magid-menu-buttons">
