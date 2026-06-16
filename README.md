@@ -32,6 +32,45 @@ At runtime, the server exposes an HTTP API and returns JSON responses that descr
 
 This React client is the web counterpart of the JavaFX client and follows the same server contract.
 
+## Architecture summary (current prototype)
+
+### Component flow (`magid-app/src/components`)
+
+- `App.tsx` is the shell: options access, status feedback, and initial connection/bootstrap flow.
+- `MagidRoot.tsx` is the central dispatcher that maps parsed protocol elements to concrete UI components.
+- `ResponsesContainer.tsx` preserves server response order and handles blocking visual transitions before unlocking later elements.
+- `MenuScene.tsx`, `NarrationText.tsx`, `CommandButton.tsx`, and `VisualFade.tsx` are focused renderers for protocol element types.
+- `OptionsModal.tsx` manages runtime client preferences (server URL, XML selection, toggles, volume).
+
+### Hooks (`magid-app/src/hooks`)
+
+- `useMagidCommand` exposes a stable command callback that routes user actions into store-driven server requests.
+- `useTypewriter` implements timeline-aware progressive text rendering (`DCSTP_...`) with cleanup-safe timers.
+- `useAudio` attaches/cleans looping background audio per scene.
+
+### API layer (`magid-app/src/api`)
+
+- `magidClient.ts` contains all HTTP communication (`sendCommand`, `serverStatus`, `getXmlList`, `requestXml`).
+- It also resolves `magid://` anchors to the active base URL, including nested response data where needed.
+
+### Lib layer (`magid-app/src/lib`)
+
+- `elementFactory.ts` converts server JSON into a typed `ParsedElement` union and handles protocol aliases/`responses` recursion.
+- `textTimeline.ts` parses timeline markers for typewriter animation.
+- `cssUtils.ts` injects/clears server-provided stylesheets dynamically.
+- `renderText.tsx` handles line-break-preserving text rendering helpers.
+
+### State management (`magid-app/src/store`)
+
+This project uses **Zustand** (`magidStore.ts`) as the single shared state container for connection status, parsed elements, config/env vars, CSS state, and command loading/error flow.
+
+Zustand was selected because it fits the app's protocol-driven architecture:
+
+- lightweight API with minimal boilerplate (faster to evolve during prototype work),
+- easy React integration via selectors/hooks without Redux-style ceremony,
+- simple colocated actions for async command flow (`sendCommand`) and immediate side-effects (config/CSS/app vars),
+- enough structure for global cross-component state, while keeping components and utility modules small.
+
 ## Magid protocol (quick overview)
 
 - Requests are sent to a base URL using `?cmd=...` (for example `server-status`, `list-xmls`, `reload-xml`, `set-xml`, or story commands).
