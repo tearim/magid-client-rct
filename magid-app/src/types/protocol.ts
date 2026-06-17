@@ -74,3 +74,10 @@ export interface ServerStatus {
   xmlPath: string;
   [key: string]: string;
 }
+
+export interface ServerErrorPayload {
+  status: 'error';
+  message?: string;
+  'freshness-key'?: string;
+  'current-scene'?: string;
+}

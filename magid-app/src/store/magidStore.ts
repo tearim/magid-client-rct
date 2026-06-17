@@ -2,8 +2,13 @@ import { create } from 'zustand';
 import { parseResponse, type ParsedElement } from '../lib/elementFactory';
 import { injectStyleLink, clearInjectedStylesheets } from '../lib/cssUtils';
 import { sendCommand as apiSendCommand } from '../api/magidClient';
-import type { ConfigData } from '../types/protocol';
+import type { ConfigData, ServerErrorPayload } from '../types/protocol';
 import { prefs, PREF_KEYS } from '../prefs/prefHelper';
+
+export interface Toast {
+  id: string;
+  message: string;
+}
 
 interface MagidState {
   baseUrl: string;
@@ -16,6 +21,7 @@ interface MagidState {
   isLoading: boolean;
   error: string | null;
   cssReloadingCommands: string[];
+  toasts: Toast[];
 
   setBaseUrl: (url: string) => void;
   setConnected: (v: boolean) => void;
@@ -27,6 +33,16 @@ interface MagidState {
   getVar: (name: string) => string | undefined;
   isVar: (name: string, expected: string) => boolean;
   commandRequiresCssReloading: (cmd: string) => boolean;
+  addToast: (message: string) => void;
+  dismissToast: (id: string) => void;
+}
+
+function parseServerError(raw: string): ServerErrorPayload | null {
+  try {
+    const json = JSON.parse(raw);
+    if (json?.status === 'error') return json as ServerErrorPayload;
+  } catch {}
+  return null;
 }
 
 function applyConfig(data: ConfigData, get: () => MagidState) {
@@ -54,6 +70,7 @@ export const useMagidStore = create<MagidState>((set, get) => ({
   cssFileSources: {},
   isLoading: false,
   error: null,
+  toasts: [],
 
   setBaseUrl: (url) => set({ baseUrl: url }),
   setConnected: (v) => set({ connected: v }),
@@ -100,18 +117,22 @@ export const useMagidStore = create<MagidState>((set, get) => ({
 
     set({ elements: renderElements, error: null });
   },
+
   commandRequiresCssReloading: (cmd: string): boolean => {
     return get().cssReloadingCommands.includes(cmd);
   },
+
   sendCommand: async (cmd: string) => {
     const { baseUrl, loadResponse } = get();
     set({ isLoading: true, error: null, elements: [] });
+
     if (get().commandRequiresCssReloading(cmd)) {
       get().clearCssFiles();
       const envVars = { ...get().envVars };
       delete envVars['freshness-key'];
       set({ currentScene: '', menuClass: '', envVars });
     }
+
     const extra: Record<string, string> = {};
     const freshnessKey = get().getVar('freshness-key');
     if (freshnessKey) extra['freshness-key'] = freshnessKey;
@@ -120,6 +141,55 @@ export const useMagidStore = create<MagidState>((set, get) => ({
 
     try {
       const raw = await apiSendCommand(baseUrl, cmd, extra);
+      const serverError = parseServerError(raw);
+
+      if (serverError) {
+        const correctedKey = serverError['freshness-key'];
+        const correctedScene = serverError['current-scene'];
+
+        const newEnvVars = { ...get().envVars };
+        if (correctedKey) newEnvVars['freshness-key'] = correctedKey;
+
+        // Scene mismatch: the client was on a different scene than the server.
+        // The action must be dismissed — re-fetch the current menu instead.
+        if (correctedScene !== undefined && correctedScene !== currentScene) {
+          set({ envVars: newEnvVars, currentScene: correctedScene });
+          get().addToast('Your action was dismissed — the client was out of sync. The current menu has been restored.');
+
+          const recoveryExtra: Record<string, string> = {};
+          if (correctedKey) recoveryExtra['freshness-key'] = correctedKey;
+          if (correctedScene) recoveryExtra['current-scene'] = correctedScene;
+
+          const recoveryRaw = await apiSendCommand(baseUrl, '', recoveryExtra);
+          if (!parseServerError(recoveryRaw)) {
+            loadResponse(recoveryRaw);
+            set({ connected: true });
+          }
+          return;
+        }
+
+        // Freshness key mismatch: retry the same command with the corrected key.
+        set({
+          envVars: newEnvVars,
+          ...(correctedScene !== undefined && { currentScene: correctedScene }),
+        });
+
+        const retryExtra: Record<string, string> = {};
+        if (correctedKey) retryExtra['freshness-key'] = correctedKey;
+        if (correctedScene) retryExtra['current-scene'] = correctedScene;
+
+        const retryRaw = await apiSendCommand(baseUrl, cmd, retryExtra);
+        const retryError = parseServerError(retryRaw);
+
+        if (retryError) {
+          get().addToast('Cannot synchronize with server — please try again or reconnect.');
+        } else {
+          loadResponse(retryRaw);
+          set({ connected: true });
+        }
+        return;
+      }
+
       loadResponse(raw);
       set({ connected: true });
     } catch (e) {
@@ -154,4 +224,13 @@ export const useMagidStore = create<MagidState>((set, get) => ({
   getVar: (name) => get().envVars[name],
 
   isVar: (name, expected) => get().envVars[name] === expected,
+
+  addToast: (message) => {
+    const id = crypto.randomUUID();
+    set((s) => ({ toasts: [...s.toasts, { id, message }] }));
+  },
+
+  dismissToast: (id) => {
+    set((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) }));
+  },
 }));

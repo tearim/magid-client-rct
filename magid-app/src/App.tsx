@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { MagidRoot } from './components/MagidRoot';
 import { OptionsModal } from './components/OptionsModal';
+import { ToastContainer } from './components/ToastContainer';
 import { useMagidStore } from './store/magidStore';
 import { prefs, PREF_KEYS } from './prefs/prefHelper';
 import { serverStatus, requestXml } from './api/magidClient';
@@ -117,6 +118,8 @@ export default function App() {
           onMessage={showMessage}
         />
       )}
+
+      <ToastContainer />
     </div>
   );
 }
