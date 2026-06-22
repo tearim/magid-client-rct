@@ -1,10 +1,14 @@
 const ATTR = 'data-magid-file';
 const blobUrlMap = new Map<string, string>();
 
-export async function injectStyleLink(url: string): Promise<void> {
+export async function injectStyleLink(url: string, fileRequestToken?: string): Promise<void> {
   if (document.querySelector(`link[${ATTR}="${url}"]`)) return;
 
-  const fetchUrl = url + '?cmd=resolveMagidProtocol';
+  const fetchUrlObj = new URL(url);
+  fetchUrlObj.searchParams.set('cmd', 'resolveMagidProtocol');
+  if (fileRequestToken) fetchUrlObj.searchParams.set('file-request-token', fileRequestToken);
+  const fetchUrl = fetchUrlObj.toString();
+
   try {
     const res = await fetch(fetchUrl);
     if (!res.ok) {

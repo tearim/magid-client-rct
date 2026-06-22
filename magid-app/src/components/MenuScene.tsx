@@ -5,6 +5,7 @@ import { useAudio } from '../hooks/useAudio';
 import { useTypewriter } from '../hooks/useTypewriter';
 import { prefs, PREF_KEYS } from '../prefs/prefHelper';
 import { useMagidCommand } from '../hooks/useMagidCommand';
+import { useMagidStore } from '../store/magidStore';
 import { renderWithBreaks } from '../lib/renderText';
 
 interface Props {
@@ -13,13 +14,18 @@ interface Props {
 
 export function MenuScene({ data }: Props) {
   const sendCmd = useMagidCommand();
+  const fileRequestToken = useMagidStore((s) => s.fileRequestToken);
   const descRef = useRef<HTMLDivElement>(null);
   const volume = prefs.getDouble(PREF_KEYS.MUSIC_VOLUME) || 0.8;
   const skipTimelines = prefs.getBoolean(PREF_KEYS.NARRATION_IGNORE_TEXT_TL);
   const rawDesc = data['menu-description'] ?? '';
   const displayed = useTypewriter(rawDesc, skipTimelines);
 
-  useAudio(data['menu-background-music'], volume);
+  const rawAudioSrc = data['menu-background-music'];
+  const audioSrc = rawAudioSrc && fileRequestToken
+    ? (() => { const u = new URL(rawAudioSrc); u.searchParams.set('file-request-token', fileRequestToken); return u.toString(); })()
+    : rawAudioSrc;
+  useAudio(audioSrc, volume);
 
   useEffect(() => {
     if (descRef.current && data['menu-css']) {

@@ -22,6 +22,7 @@ interface MagidState {
   error: string | null;
   cssReloadingCommands: string[];
   toasts: Toast[];
+  fileRequestToken: string | null;
 
   setBaseUrl: (url: string) => void;
   setConnected: (v: boolean) => void;
@@ -71,6 +72,7 @@ export const useMagidStore = create<MagidState>((set, get) => ({
   isLoading: false,
   error: null,
   toasts: [],
+  fileRequestToken: null,
 
   setBaseUrl: (url) => set({ baseUrl: url }),
   setConnected: (v) => set({ connected: v }),
@@ -88,10 +90,25 @@ export const useMagidStore = create<MagidState>((set, get) => ({
     const { baseUrl } = get();
     const parsed = parseResponse(json, baseUrl);
 
+    // Pre-pass: apply session credentials before config so the file-request-token
+    // is available when CSS files are loaded from the same response.
+    const applySessionEl = (el: ParsedElement) => {
+      if (el.type !== 'session') return;
+      const { 'session-id': sessionId, 'file-request-token': token } = el.data;
+      if (sessionId) document.cookie = `session-id=${encodeURIComponent(sessionId)}; path=/; SameSite=Lax`;
+      if (token) set({ fileRequestToken: token });
+    };
+    for (const el of parsed) {
+      applySessionEl(el);
+      if (el.type === 'responses') el.elements.forEach(applySessionEl);
+    }
+
     const renderElements: ParsedElement[] = [];
     for (const el of parsed) {
       if (el.type === 'config') {
         applyConfig(el.data.config, get);
+      } else if (el.type === 'session') {
+        // already applied in the pre-pass above
       } else if (el.type === 'menu') {
         const name = el.data['menu-name'] ?? el.data.menu;
         if (name) set({ currentScene: name, menuClass: el.data['menu-class'] ?? '' });
@@ -101,6 +118,8 @@ export const useMagidStore = create<MagidState>((set, get) => ({
         for (const child of el.elements) {
           if (child.type === 'config') {
             applyConfig(child.data.config, get);
+          } else if (child.type === 'session') {
+            // already applied in the pre-pass above
           } else {
             if (child.type === 'menu') {
               const name = child.data['menu-name'] ?? child.data.menu;
@@ -201,7 +220,7 @@ export const useMagidStore = create<MagidState>((set, get) => ({
   },
 
   addCssFile: (url) => {
-    void injectStyleLink(url);
+    void injectStyleLink(url, get().fileRequestToken ?? undefined);
     set((s) => ({ cssFileSources: { ...s.cssFileSources, [url]: url } }));
   },
 

@@ -5,6 +5,7 @@ import type {
   CommandResponse,
   ConfigResponse,
   VisualResponse,
+  SessionResponse,
 } from '../types/protocol';
 
 export type ParsedElement =
@@ -13,6 +14,7 @@ export type ParsedElement =
   | { type: 'command'; data: CommandResponse }
   | { type: 'config'; data: ConfigResponse }
   | { type: 'visual'; data: VisualResponse }
+  | { type: 'session'; data: SessionResponse }
   | { type: 'responses'; elements: ParsedElement[] };
 
 type RawObject = Record<string, unknown>;
@@ -48,6 +50,8 @@ const ELEMENT_PARSERS: Record<string, ElementParser> = {
   }),
   // menu-options: server always emits this key (even when no menu-name is buffered)
   'menu-options':  (obj) => ({ type: 'menu',      data: obj as unknown as MenuResponse }),
+  // Session credentials sent on the initial empty command
+  'session-id':    (obj) => ({ type: 'session',   data: obj as unknown as SessionResponse }),
 };
 
 function resolveStringsInObject(obj: unknown, baseUrl: string): unknown {

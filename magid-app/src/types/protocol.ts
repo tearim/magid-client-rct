@@ -81,3 +81,8 @@ export interface ServerErrorPayload {
   'freshness-key'?: string;
   'current-scene'?: string;
 }
+
+export interface SessionResponse {
+  'session-id': string;
+  'file-request-token': string;
+}
