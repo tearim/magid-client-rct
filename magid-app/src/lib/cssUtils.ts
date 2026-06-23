@@ -1,16 +1,18 @@
 const ATTR = 'data-magid-file';
 const blobUrlMap = new Map<string, string>();
 
-export async function injectStyleLink(url: string, fileRequestToken?: string): Promise<void> {
+export async function injectStyleLink(url: string, fileRequestToken?: string, authToken?: string): Promise<void> {
   if (document.querySelector(`link[${ATTR}="${url}"]`)) return;
 
   const fetchUrlObj = new URL(url);
-  fetchUrlObj.searchParams.set('cmd', 'resolveMagidProtocol');
+  fetchUrlObj.searchParams.set('cmd', 'resolve-magid-protocol');
   if (fileRequestToken) fetchUrlObj.searchParams.set('file-request-token', fileRequestToken);
   const fetchUrl = fetchUrlObj.toString();
 
   try {
-    const res = await fetch(fetchUrl);
+    const headers: Record<string, string> = {};
+    if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
+    const res = await fetch(fetchUrl, Object.keys(headers).length ? { headers } : undefined);
     if (!res.ok) {
       console.warn(`[magid] Failed to fetch CSS: ${url} (${res.status})`);
       return;
@@ -20,7 +22,8 @@ export async function injectStyleLink(url: string, fileRequestToken?: string): P
     link.rel = 'stylesheet';
     link.setAttribute(ATTR, url);
 
-    if ((res.headers.get('Content-Type') ?? '').includes('text/css')) {
+    // When an auth header is required, <link href> can't carry it — always use blob URL.
+    if (!authToken && (res.headers.get('Content-Type') ?? '').includes('text/css')) {
       await res.body?.cancel();
       link.href = fetchUrl;
     } else {

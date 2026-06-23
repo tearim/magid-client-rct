@@ -25,7 +25,8 @@ export function OptionsModal({ baseUrl, onBaseUrlChange, onClose, onMessage }: P
   useEffect(() => {
     setLoadingXmls(true);
     useMagidStore.getState().clearCssFiles();
-    getXmlList(serverAddr)
+    const authToken = useMagidStore.getState().sessionId ?? undefined;
+    getXmlList(serverAddr, authToken)
       .then(setXmlList)
       .catch(() => {})
       .finally(() => setLoadingXmls(false));
@@ -43,7 +44,7 @@ export function OptionsModal({ baseUrl, onBaseUrlChange, onClose, onMessage }: P
 
     if (selectedXml) {
       try {
-        await requestXml(serverAddr, selectedXml);
+        await requestXml(serverAddr, selectedXml, useMagidStore.getState().sessionId ?? undefined);
         onMessage('XML loaded: ' + selectedXml);
       } catch {
         onMessage('Failed to load XML');

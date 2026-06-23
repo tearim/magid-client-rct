@@ -77,6 +77,7 @@ export interface ServerStatus {
 
 export interface ServerErrorPayload {
   status: 'error';
+  'error-code'?: string;
   message?: string;
   'freshness-key'?: string;
   'current-scene'?: string;

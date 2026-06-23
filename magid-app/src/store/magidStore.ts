@@ -22,6 +22,7 @@ interface MagidState {
   error: string | null;
   cssReloadingCommands: string[];
   toasts: Toast[];
+  sessionId: string | null;
   fileRequestToken: string | null;
 
   setBaseUrl: (url: string) => void;
@@ -44,6 +45,14 @@ function parseServerError(raw: string): ServerErrorPayload | null {
     if (json?.status === 'error') return json as ServerErrorPayload;
   } catch {}
   return null;
+}
+
+// TODO: replace placeholder once the server defines the alphanumeric code for this error
+const STALE_SESSION_ERROR_CODE = 'SESSION_NOT_FOUND';
+
+function isStaleSessionError(error: ServerErrorPayload): boolean {
+  if (error['error-code']) return error['error-code'] === STALE_SESSION_ERROR_CODE;
+  return error.message === 'Client id/File request token was not found';
 }
 
 function applyConfig(data: ConfigData, get: () => MagidState) {
@@ -72,6 +81,7 @@ export const useMagidStore = create<MagidState>((set, get) => ({
   isLoading: false,
   error: null,
   toasts: [],
+  sessionId: null,
   fileRequestToken: null,
 
   setBaseUrl: (url) => set({ baseUrl: url }),
@@ -95,7 +105,7 @@ export const useMagidStore = create<MagidState>((set, get) => ({
     const applySessionEl = (el: ParsedElement) => {
       if (el.type !== 'session') return;
       const { 'session-id': sessionId, 'file-request-token': token } = el.data;
-      if (sessionId) document.cookie = `session-id=${encodeURIComponent(sessionId)}; path=/; SameSite=Lax`;
+      if (sessionId) set({ sessionId });
       if (token) set({ fileRequestToken: token });
     };
     for (const el of parsed) {
@@ -159,10 +169,24 @@ export const useMagidStore = create<MagidState>((set, get) => ({
     if (currentScene) extra['current-scene'] = currentScene;
 
     try {
-      const raw = await apiSendCommand(baseUrl, cmd, extra);
+      const authToken = get().sessionId ?? undefined;
+      const raw = await apiSendCommand(baseUrl, cmd, extra, authToken);
       const serverError = parseServerError(raw);
 
       if (serverError) {
+        // Stale session: credentials rejected by server — drop them and re-establish.
+        if (isStaleSessionError(serverError)) {
+          set({ sessionId: null, fileRequestToken: null });
+          const recoveryRaw = await apiSendCommand(baseUrl, '', {}, undefined);
+          if (!parseServerError(recoveryRaw)) {
+            loadResponse(recoveryRaw);
+            set({ connected: true });
+          } else {
+            get().addToast('Session expired — could not re-establish connection.');
+          }
+          return;
+        }
+
         const correctedKey = serverError['freshness-key'];
         const correctedScene = serverError['current-scene'];
 
@@ -179,7 +203,7 @@ export const useMagidStore = create<MagidState>((set, get) => ({
           if (correctedKey) recoveryExtra['freshness-key'] = correctedKey;
           if (correctedScene) recoveryExtra['current-scene'] = correctedScene;
 
-          const recoveryRaw = await apiSendCommand(baseUrl, '', recoveryExtra);
+          const recoveryRaw = await apiSendCommand(baseUrl, '', recoveryExtra, authToken);
           if (!parseServerError(recoveryRaw)) {
             loadResponse(recoveryRaw);
             set({ connected: true });
@@ -197,7 +221,7 @@ export const useMagidStore = create<MagidState>((set, get) => ({
         if (correctedKey) retryExtra['freshness-key'] = correctedKey;
         if (correctedScene) retryExtra['current-scene'] = correctedScene;
 
-        const retryRaw = await apiSendCommand(baseUrl, cmd, retryExtra);
+        const retryRaw = await apiSendCommand(baseUrl, cmd, retryExtra, authToken);
         const retryError = parseServerError(retryRaw);
 
         if (retryError) {
@@ -220,7 +244,7 @@ export const useMagidStore = create<MagidState>((set, get) => ({
   },
 
   addCssFile: (url) => {
-    void injectStyleLink(url, get().fileRequestToken ?? undefined);
+    void injectStyleLink(url, get().fileRequestToken ?? undefined, get().sessionId ?? undefined);
     set((s) => ({ cssFileSources: { ...s.cssFileSources, [url]: url } }));
   },
 

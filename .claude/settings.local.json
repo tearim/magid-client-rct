@@ -5,7 +5,12 @@
       "Bash(npx vitest *)",
       "Bash(npm run *)",
       "PowerShell(nvm *)",
-      "PowerShell(winget *)"
+      "PowerShell(winget *)",
+      "Bash(npx tsc *)",
+      "PowerShell(Get-ChildItem \"C:\\\\DevDen\\\\magid-client-rct\\\\magid-app\\\\src\" -Recurse | Where-Object { !$_.PSIsContainer } | ForEach-Object { $_.FullName })",
+      "Bash(Get-ChildItem -Path \"C:\\\\DevDen\\\\magid-client-rct\\\\magid-app\\\\src\" -Recurse -Filter \"*.tsx\" -o)",
+      "Bash(Select-Object -ExpandProperty FullName)",
+      "PowerShell(Get-ChildItem \"C:\\\\DevDen\\\\magid-client-rct\\\\magid-app\" -File | ForEach-Object { $_.Name })"
     ]
   }
 }

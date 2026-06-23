@@ -4,7 +4,7 @@ import { OptionsModal } from './components/OptionsModal';
 import { ToastContainer } from './components/ToastContainer';
 import { useMagidStore } from './store/magidStore';
 import { prefs, PREF_KEYS } from './prefs/prefHelper';
-import { serverStatus, requestXml } from './api/magidClient';
+import { requestXml } from './api/magidClient';
 import { clientConfig } from './config/clientConfig';
 import styles from './App.module.css';
 
@@ -28,17 +28,11 @@ export default function App() {
     setBaseUrl(savedUrl);
 
     async function startup(url: string) {
-      try {
-        await serverStatus(url);
-      } catch {
-        showMessage('Could not connect to server');
-      }
-
       const armXml    = prefs.getBoolean(PREF_KEYS.STARTUP_ARM_XML);
       const storyXml  = prefs.get(PREF_KEYS.STORY_XML);
       if (armXml && storyXml) {
         try {
-          await requestXml(url, storyXml);
+          await requestXml(url, storyXml, useMagidStore.getState().sessionId ?? undefined);
         } catch {
           showMessage('Failed to load saved XML');
         }
