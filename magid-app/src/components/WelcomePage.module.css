@@ -1,0 +1,100 @@
+.root {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.25rem;
+  max-width: 480px;
+  width: 100%;
+  text-align: center;
+}
+
+/* Geometric monogram */
+.icon {
+  font-size: 4rem;
+  line-height: 1;
+  color: #3a3a7a;
+  text-shadow: 0 0 40px #4a4aff55, 0 0 80px #4a4aff22;
+  user-select: none;
+  animation: breathe 4s ease-in-out infinite;
+}
+
+.serverIcon {
+  width: 80px;
+  height: 80px;
+  object-fit: contain;
+  border-radius: 12px;
+}
+
+.serverDesc {
+  color: #8a8aaa;
+  font-style: italic;
+}
+
+@keyframes breathe {
+  0%, 100% { color: #3a3a7a; text-shadow: 0 0 40px #4a4aff44, 0 0 80px #4a4aff11; }
+  50%       { color: #5a5aaa; text-shadow: 0 0 40px #6a6aff88, 0 0 80px #4a4aff33; }
+}
+
+.title {
+  margin: 0;
+  font-size: 1.4rem;
+  font-weight: 600;
+  color: #c8c8e8;
+  letter-spacing: 0.02em;
+}
+
+.body {
+  margin: 0;
+  font-size: 0.95rem;
+  color: #6a6a8a;
+  line-height: 1.65;
+}
+
+/* Inline key-like labels matching the header button style */
+.key {
+  display: inline-block;
+  padding: 0.05rem 0.45rem;
+  border-radius: 4px;
+  border: 1px solid #3a3a6a;
+  background: #16163a;
+  color: #9090cc;
+  font-family: inherit;
+  font-size: 0.875rem;
+  font-style: normal;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+}
+
+.key:hover {
+  background: #22225a;
+  border-color: #5a5aaa;
+  color: #bbbbff;
+}
+
+/* Warning line */
+.warning {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  text-align: left;
+  background: #16100a;
+  border: 1px solid #3a2a0a;
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  color: #7a6040;
+}
+
+.warningIcon {
+  font-size: 0.9rem;
+  flex-shrink: 0;
+  margin-top: 0.1rem;
+  color: #7a6040;
+}
