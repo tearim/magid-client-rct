@@ -114,6 +114,59 @@
   cursor: not-allowed;
 }
 
+.endSessionBtn {
+  background: transparent;
+  border: 1px solid #7a1a1a;
+  color: #cc5555;
+  padding: 0.3rem 0.75rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.8rem;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.endSessionBtn:hover:not(:disabled) {
+  background: #2a0808;
+  color: #ff7777;
+  border-color: #aa2222;
+}
+
+.endSessionBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.endSessionConfirm {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.8rem;
+  color: #cc7777;
+}
+
+.endSessionYes {
+  padding: 0.25rem 0.6rem;
+  border-radius: 4px;
+  border: 1px solid #aa2222;
+  background: #3a0808;
+  color: #ff8888;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+.endSessionYes:hover:not(:disabled) { background: #550a0a; }
+.endSessionYes:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.endSessionNo {
+  padding: 0.25rem 0.6rem;
+  border-radius: 4px;
+  border: 1px solid #444;
+  background: transparent;
+  color: #888;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+.endSessionNo:hover { background: #222; color: #ccc; }
+
 .main {
   flex: 1;
   display: flex;

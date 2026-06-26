@@ -1,7 +1,6 @@
-import {useState, useEffect} from 'react';
-import { prefs, PREF_KEYS } from '../prefs/prefHelper';
-import { getXmlList, requestXml } from '../api/magidClient';
-import type { XmlEntry } from '../types/protocol';
+import { useState, useEffect, useRef } from 'react';
+import { prefs, PREF_KEYS, urlHistory } from '../prefs/prefHelper';
+import { requestXml } from '../api/magidClient';
 import styles from './OptionsModal.module.css';
 import { useMagidStore } from '../store/magidStore';
 
@@ -10,29 +9,54 @@ interface Props {
   onBaseUrlChange: (url: string) => void;
   onClose: () => void;
   onMessage: (msg: string) => void;
+  onOpenStats: () => void;
+  focusOnUrl?: boolean;
 }
 
-export function OptionsModal({ baseUrl, onBaseUrlChange, onClose, onMessage }: Props) {
+export function OptionsModal({ baseUrl, onBaseUrlChange, onClose, onMessage, onOpenStats, focusOnUrl }: Props) {
+  const xmlList        = useMagidStore((s) => s.xmlList);
+  const refreshXmlList = useMagidStore((s) => s.refreshXmlList);
+
   const [serverAddr, setServerAddr]     = useState(() => prefs.get(PREF_KEYS.SERVER_ADDRESS, baseUrl));
-  const [xmlList, setXmlList]           = useState<XmlEntry[]>([]);
   const [selectedXml, setSelectedXml]  = useState(() => prefs.get(PREF_KEYS.STORY_XML));
   const [startupArm, setStartupArm]    = useState(() => prefs.getBoolean(PREF_KEYS.STARTUP_ARM_XML));
   const [ignoreTimelines, setIgnoreTimelines] = useState(() => prefs.getBoolean(PREF_KEYS.NARRATION_IGNORE_TIMELINES));
   const [ignoreTextTL, setIgnoreTextTL]       = useState(() => prefs.getBoolean(PREF_KEYS.NARRATION_IGNORE_TEXT_TL));
   const [ignoreMaximize, setIgnoreMaximize]   = useState(() => prefs.getBoolean(PREF_KEYS.VIEWPORT_IGNORE_MAXIMIZE));
-  const [volume, setVolume]            = useState(() => prefs.getDouble(PREF_KEYS.MUSIC_VOLUME) || 0.8);
-  const [loadingXmls, setLoadingXmls] = useState(false);
-  useEffect(() => {
-    setLoadingXmls(true);
-    useMagidStore.getState().clearCssFiles();
-    const authToken = useMagidStore.getState().sessionId ?? undefined;
-    getXmlList(serverAddr, authToken)
-      .then(setXmlList)
-      .catch(() => {})
-      .finally(() => setLoadingXmls(false));
-  }, [serverAddr]);
+  const [volume, setVolume]            = useState(() => {
+    const raw = parseFloat(prefs.get(PREF_KEYS.MUSIC_VOLUME, ''));
+    return isNaN(raw) ? 0.8 : raw;
+  });
+  const [refreshingXmls, setRefreshingXmls] = useState(false);
+  const [armingXml, setArmingXml]           = useState(false);
+  const [urlHistoryList]                    = useState(() => urlHistory.get());
+  const urlInputRef = useRef<HTMLInputElement>(null);
 
-  const handleSave = async () => {
+  // Focus the URL input once on mount, if requested.
+  useEffect(() => {
+    if (focusOnUrl) urlInputRef.current?.focus();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleRefreshXmls = async () => {
+    setRefreshingXmls(true);
+    await refreshXmlList();
+    setRefreshingXmls(false);
+  };
+
+  const handleArmXml = async () => {
+    if (!selectedXml) return;
+    setArmingXml(true);
+    try {
+      await requestXml(serverAddr, selectedXml, useMagidStore.getState().sessionId ?? undefined);
+      onMessage('XML armed: ' + selectedXml);
+    } catch {
+      onMessage('Failed to arm XML');
+    } finally {
+      setArmingXml(false);
+    }
+  };
+
+  const handleSave = () => {
     prefs.set(PREF_KEYS.SERVER_ADDRESS, serverAddr);
     prefs.set(PREF_KEYS.STORY_XML, selectedXml);
     prefs.setBoolean(PREF_KEYS.STARTUP_ARM_XML, startupArm);
@@ -41,16 +65,6 @@ export function OptionsModal({ baseUrl, onBaseUrlChange, onClose, onMessage }: P
     prefs.setBoolean(PREF_KEYS.VIEWPORT_IGNORE_MAXIMIZE, ignoreMaximize);
     prefs.setDouble(PREF_KEYS.MUSIC_VOLUME, volume);
     onBaseUrlChange(serverAddr);
-
-    if (selectedXml) {
-      try {
-        await requestXml(serverAddr, selectedXml, useMagidStore.getState().sessionId ?? undefined);
-        onMessage('XML loaded: ' + selectedXml);
-      } catch {
-        onMessage('Failed to load XML');
-      }
-    }
-
     onClose();
   };
 
@@ -62,31 +76,52 @@ export function OptionsModal({ baseUrl, onBaseUrlChange, onClose, onMessage }: P
         <label className={styles.field}>
           Server address
           <input
+            ref={urlInputRef}
+            list="magid-url-history"
             type="text"
             value={serverAddr}
             onChange={(e) => setServerAddr(e.target.value)}
             className={styles.input}
+            placeholder="http://localhost:8090"
           />
+          <datalist id="magid-url-history">
+            {urlHistoryList.map((u) => <option key={u} value={u} />)}
+          </datalist>
         </label>
 
         <label className={styles.field}>
-          Story XML
-          {loadingXmls ? (
-            <span className={styles.hint}>Loading…</span>
-          ) : (
+          <span className={styles.xmlLabel}>
+            Story XML
+            <button
+              className={styles.refreshBtn}
+              onClick={handleRefreshXmls}
+              disabled={refreshingXmls}
+              title="Refresh XML list from server"
+            >
+              {refreshingXmls ? '…' : '↻'}
+            </button>
+          </span>
+          <div className={styles.xmlRow}>
             <select
               value={selectedXml}
               onChange={(e) => setSelectedXml(e.target.value)}
               className={styles.input}
             >
               <option value="">— none —</option>
-              {xmlList.map((x) => (
+              {(Array.isArray(xmlList) ? xmlList : []).map((x) => (
                 <option key={x.path} value={x.path}>
                   {x.name || x.path}
                 </option>
               ))}
             </select>
-          )}
+            <button
+              onClick={handleArmXml}
+              disabled={!selectedXml || armingXml}
+              className={styles.armBtn}
+            >
+              {armingXml ? 'Arming…' : 'Arm XML'}
+            </button>
+          </div>
         </label>
 
         {selectedXml && (
@@ -124,6 +159,7 @@ export function OptionsModal({ baseUrl, onBaseUrlChange, onClose, onMessage }: P
         </label>
 
         <div className={styles.actions}>
+          <button onClick={onOpenStats} className={styles.statsBtn}>Server Stats</button>
           <button onClick={handleSave} className={styles.saveBtn}>Save</button>
           <button onClick={onClose} className={styles.cancelBtn}>Cancel</button>
         </div>

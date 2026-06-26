@@ -86,4 +86,36 @@ export interface ServerErrorPayload {
 export interface SessionResponse {
   'session-id': string;
   'file-request-token': string;
+  'available-xmls'?: XmlEntry[];
+  'server-name'?: string;
+  'server-version'?: string;
+  'server-description'?: string;
+  'server-icon'?: string;
+}
+
+export interface ServerStatsHeader {
+  'session-count': number;
+  'session-max': number;
+  'session-ttl': number;
+  'session-short-ttl': number;
+  'session-next-evict': number;
+  'session-next-evict-explanation'?: string;
+  [key: string]: unknown;
+}
+
+export interface ServerStatsSession {
+  'is-admin': boolean;
+  'uid-hash': number;
+  'file-path': string;
+  'is-short-lived': boolean;
+  'command-count': number;
+  'file-request-count': number;
+  'last-active-time': number;
+  'last-active-time-explanation'?: string;
+  [key: string]: unknown;
+}
+
+export interface ServerStats {
+  header: ServerStatsHeader;
+  sessions: ServerStatsSession[];
 }

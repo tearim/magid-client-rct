@@ -16,3 +16,21 @@ export const PREF_KEYS = {
   VIEWPORT_IGNORE_MAXIMIZE:   'viewport.ignoremaximization',
   MUSIC_VOLUME:               'music.volume',
 } as const;
+
+const URL_HISTORY_KEY = 'server.address.history';
+const URL_HISTORY_MAX = 10;
+
+export const urlHistory = {
+  get(): string[] {
+    try {
+      return JSON.parse(localStorage.getItem(URL_HISTORY_KEY) ?? '[]') as string[];
+    } catch {
+      return [];
+    }
+  },
+  add(url: string): void {
+    const list = this.get().filter((u) => u !== url);
+    list.unshift(url);
+    localStorage.setItem(URL_HISTORY_KEY, JSON.stringify(list.slice(0, URL_HISTORY_MAX)));
+  },
+};

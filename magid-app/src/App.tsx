@@ -1,18 +1,24 @@
 import { useState, useEffect, useCallback } from 'react';
 import { MagidRoot } from './components/MagidRoot';
+import { WelcomePage } from './components/WelcomePage';
+import { ServerLobbyPage } from './components/ServerLobbyPage';
 import { OptionsModal } from './components/OptionsModal';
+import { ServerStatsDashboard } from './components/ServerStatsDashboard';
 import { ToastContainer } from './components/ToastContainer';
 import { useMagidStore } from './store/magidStore';
-import { prefs, PREF_KEYS } from './prefs/prefHelper';
+import { prefs, PREF_KEYS, urlHistory } from './prefs/prefHelper';
 import { requestXml } from './api/magidClient';
 import { clientConfig } from './config/clientConfig';
 import styles from './App.module.css';
 
 export default function App() {
-  const { elements, isLoading, error, baseUrl, setBaseUrl, sendCommand, connected, menuClass } =
-    useMagidStore();
+  const { elements, isLoading, error, baseUrl, setBaseUrl, sendCommand, connected, menuClass,
+          sessionId, endSession, serverConnected } = useMagidStore();
 
-  const [showOptions, setShowOptions]   = useState(false);
+  const [showOptions, setShowOptions]        = useState(false);
+  const [showStats, setShowStats]            = useState(false);
+  const [focusOnUrl, setFocusOnUrl]          = useState(false);
+  const [confirmEndSession, setConfirmEndSession] = useState(false);
   const [statusMsg, setStatusMsg]       = useState('');
   const statusTimerRef = { current: 0 as ReturnType<typeof setTimeout> };
 
@@ -50,8 +56,17 @@ export default function App() {
     if (error) showMessage(error);
   }, [error, showMessage]);
 
+  // Save the URL to history the first time a session is established.
+  useEffect(() => {
+    if (sessionId) urlHistory.add(baseUrl);
+  }, [sessionId]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const handleConnect = () => {
-    void sendCommand('');
+    if (!baseUrl) {
+      handleOptions(true);
+    } else {
+      void sendCommand('');
+    }
   };
 
   const handleResetServer = async () => {
@@ -63,12 +78,22 @@ export default function App() {
     setBaseUrl(url);
   };
 
+  const handleOptions = (_focusOnUrl?: boolean) => {
+    console.log("I will call with: ntfu: " + _focusOnUrl);
+    if ( _focusOnUrl) {
+      setFocusOnUrl(true);
+    } else {
+      setFocusOnUrl(false);
+    }
+    setShowOptions(true);
+  };
+
   return (
     <div className={styles.shell}>
       <header className={styles.header}>
         <button
           className={styles.optionsBtn}
-          onClick={() => setShowOptions(true)}
+          onClick={() => handleOptions()}
           aria-label="Open options"
         >
           ☰ Options
@@ -97,11 +122,43 @@ export default function App() {
               Connect
             </button>
           )}
+          {sessionId && (
+            confirmEndSession ? (
+              <span className={styles.endSessionConfirm}>
+                End session?
+                <button
+                  className={styles.endSessionYes}
+                  disabled={isLoading}
+                  onClick={() => { setConfirmEndSession(false); void endSession(); }}
+                >
+                  Yes
+                </button>
+                <button
+                  className={styles.endSessionNo}
+                  onClick={() => setConfirmEndSession(false)}
+                >
+                  No
+                </button>
+              </span>
+            ) : (
+              <button
+                className={styles.endSessionBtn}
+                disabled={isLoading}
+                onClick={() => setConfirmEndSession(true)}
+              >
+                End session
+              </button>
+            )
+          )}
         </div>
       </header>
 
       <main className={[styles.main, menuClass].filter(Boolean).join(' ')}>
-        <MagidRoot elements={elements} />
+        {elements.length > 0
+          ? <MagidRoot elements={elements} />
+          : serverConnected
+            ? <ServerLobbyPage onConnect={handleConnect} />
+            : <WelcomePage connectFunction={handleConnect} optionsFunction={() => handleOptions()} />}
       </main>
 
       {showOptions && (
@@ -110,6 +167,15 @@ export default function App() {
           onBaseUrlChange={handleBaseUrlChange}
           onClose={() => setShowOptions(false)}
           onMessage={showMessage}
+          onOpenStats={() => { setShowOptions(false); setShowStats(true); }}
+          focusOnUrl={focusOnUrl}
+        />
+      )}
+
+      {showStats && (
+        <ServerStatsDashboard
+          baseUrl={baseUrl}
+          onClose={() => setShowStats(false)}
         />
       )}
 

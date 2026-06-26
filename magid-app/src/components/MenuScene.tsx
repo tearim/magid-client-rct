@@ -16,7 +16,8 @@ export function MenuScene({ data }: Props) {
   const sendCmd = useMagidCommand();
   const fileRequestToken = useMagidStore((s) => s.fileRequestToken);
   const descRef = useRef<HTMLDivElement>(null);
-  const volume = prefs.getDouble(PREF_KEYS.MUSIC_VOLUME) || 0.8;
+  const storedVolume = parseFloat(prefs.get(PREF_KEYS.MUSIC_VOLUME, ''));
+  const volume = isNaN(storedVolume) ? 0.8 : storedVolume;
   const skipTimelines = prefs.getBoolean(PREF_KEYS.NARRATION_IGNORE_TEXT_TL);
   const rawDesc = data['menu-description'] ?? '';
   const displayed = useTypewriter(rawDesc, skipTimelines);

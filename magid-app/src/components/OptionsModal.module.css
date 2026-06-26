@@ -103,3 +103,70 @@
   color: #fff;
   border-color: #888;
 }
+
+.statsBtn {
+  padding: 0.4rem 1rem;
+  background: transparent;
+  color: #7a7aff;
+  border: 1px solid #3a3a8a;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.875rem;
+  margin-right: auto;
+}
+
+.statsBtn:hover {
+  background: #1a1a4a;
+  border-color: #5a5aaa;
+}
+
+.xmlLabel {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.refreshBtn {
+  padding: 0.1rem 0.4rem;
+  font-size: 0.8rem;
+  background: transparent;
+  border: 1px solid #444;
+  border-radius: 4px;
+  color: #888;
+  cursor: pointer;
+  line-height: 1;
+}
+.refreshBtn:hover:not(:disabled) { color: #ccc; border-color: #777; }
+.refreshBtn:disabled { opacity: 0.4; cursor: default; }
+
+.xmlRow {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.xmlRow .input {
+  flex: 1;
+  min-width: 0;
+}
+
+.armBtn {
+  padding: 0.375rem 0.75rem;
+  background: #2a6a2a;
+  color: #e0e0e0;
+  border: 1px solid #4a9a4a;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.875rem;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.armBtn:hover:not(:disabled) {
+  background: #3a8a3a;
+}
+
+.armBtn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}

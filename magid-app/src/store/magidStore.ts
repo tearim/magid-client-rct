@@ -1,8 +1,8 @@
 import { create } from 'zustand';
 import { parseResponse, type ParsedElement } from '../lib/elementFactory';
 import { injectStyleLink, clearInjectedStylesheets } from '../lib/cssUtils';
-import { sendCommand as apiSendCommand } from '../api/magidClient';
-import type { ConfigData, ServerErrorPayload } from '../types/protocol';
+import { sendCommand as apiSendCommand, endSession as apiEndSession, getXmlList as apiGetXmlList } from '../api/magidClient';
+import type { ConfigData, ServerErrorPayload, XmlEntry } from '../types/protocol';
 import { prefs, PREF_KEYS } from '../prefs/prefHelper';
 
 export interface Toast {
@@ -24,8 +24,15 @@ interface MagidState {
   toasts: Toast[];
   sessionId: string | null;
   fileRequestToken: string | null;
+  xmlList: XmlEntry[];
+  serverConnected: boolean;
+  serverName: string | null;
+  serverVersion: string | null;
+  serverDescription: string | null;
+  serverIcon: string | null;
 
   setBaseUrl: (url: string) => void;
+  refreshXmlList: () => Promise<void>;
   setConnected: (v: boolean) => void;
   loadResponse: (raw: string) => void;
   sendCommand: (cmd: string) => Promise<void>;
@@ -37,6 +44,7 @@ interface MagidState {
   commandRequiresCssReloading: (cmd: string) => boolean;
   addToast: (message: string) => void;
   dismissToast: (id: string) => void;
+  endSession: () => Promise<void>;
 }
 
 function parseServerError(raw: string): ServerErrorPayload | null {
@@ -83,8 +91,22 @@ export const useMagidStore = create<MagidState>((set, get) => ({
   toasts: [],
   sessionId: null,
   fileRequestToken: null,
+  xmlList: [],
+  serverConnected: false,
+  serverName: null,
+  serverVersion: null,
+  serverDescription: null,
+  serverIcon: null,
 
-  setBaseUrl: (url) => set({ baseUrl: url }),
+  setBaseUrl: (url) => set({
+    baseUrl: url,
+    xmlList: [],
+    serverConnected: false,
+    serverName: null,
+    serverVersion: null,
+    serverDescription: null,
+    serverIcon: null,
+  }),
   setConnected: (v) => set({ connected: v }),
   cssReloadingCommands: ['reload-xml', 'set-xml'],
 
@@ -104,9 +126,22 @@ export const useMagidStore = create<MagidState>((set, get) => ({
     // is available when CSS files are loaded from the same response.
     const applySessionEl = (el: ParsedElement) => {
       if (el.type !== 'session') return;
-      const { 'session-id': sessionId, 'file-request-token': token } = el.data;
-      if (sessionId) set({ sessionId });
+      const {
+        'session-id': sessionId,
+        'file-request-token': token,
+        'available-xmls': xmls,
+        'server-name': serverName,
+        'server-version': serverVersion,
+        'server-description': serverDescription,
+        'server-icon': serverIcon,
+      } = el.data;
+      if (sessionId) set({ sessionId, serverConnected: true });
       if (token) set({ fileRequestToken: token });
+      if (xmls) set({ xmlList: Array.isArray(xmls) ? xmls : (xmls as Record<string, unknown>)?.['xmls'] as XmlEntry[] ?? [] });
+      if (serverName !== undefined) set({ serverName });
+      if (serverVersion !== undefined) set({ serverVersion });
+      if (serverDescription !== undefined) set({ serverDescription });
+      if (serverIcon !== undefined) set({ serverIcon });
     };
     for (const el of parsed) {
       applySessionEl(el);
@@ -275,5 +310,34 @@ export const useMagidStore = create<MagidState>((set, get) => ({
 
   dismissToast: (id) => {
     set((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) }));
+  },
+
+  refreshXmlList: async () => {
+    const { baseUrl, sessionId } = get();
+    try {
+      const list = await apiGetXmlList(baseUrl, sessionId ?? undefined);
+      set({ xmlList: list });
+    } catch {
+      // silent — list stays as-is
+    }
+  },
+
+  endSession: async () => {
+    const { baseUrl, sessionId } = get();
+    try {
+      await apiEndSession(baseUrl, sessionId ?? undefined);
+    } catch {
+      // Session may already be gone on the server side; proceed with cleanup.
+    }
+    get().clearCssFiles();
+    set({
+      sessionId: null,
+      fileRequestToken: null,
+      connected: false,
+      elements: [],
+      menuClass: '',
+      currentScene: '',
+      envVars: {},
+    });
   },
 }));
