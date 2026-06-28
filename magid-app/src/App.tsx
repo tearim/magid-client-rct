@@ -79,7 +79,6 @@ export default function App() {
   };
 
   const handleOptions = (_focusOnUrl?: boolean) => {
-    console.log("I will call with: ntfu: " + _focusOnUrl);
     if ( _focusOnUrl) {
       setFocusOnUrl(true);
     } else {
@@ -156,9 +155,11 @@ export default function App() {
       <main className={[styles.main, menuClass].filter(Boolean).join(' ')}>
         {elements.length > 0
           ? <MagidRoot elements={elements} />
-          : serverConnected
-            ? <ServerLobbyPage onConnect={handleConnect} />
-            : <WelcomePage connectFunction={handleConnect} optionsFunction={() => handleOptions()} />}
+          : isLoading
+            ? null
+            : serverConnected
+              ? <ServerLobbyPage onConnect={handleConnect} />
+              : <WelcomePage connectFunction={handleConnect} optionsFunction={() => handleOptions()} />}
       </main>
 
       {showOptions && (
