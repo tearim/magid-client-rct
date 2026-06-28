@@ -15,6 +15,8 @@ export const PREF_KEYS = {
   NARRATION_IGNORE_TEXT_TL:   'narration.ignoretexttimelines',
   VIEWPORT_IGNORE_MAXIMIZE:   'viewport.ignoremaximization',
   MUSIC_VOLUME:               'music.volume',
+  SESSION_ID:                 'session.id',
+  FILE_REQUEST_TOKEN:         'session.file-request-token',
 } as const;
 
 const URL_HISTORY_KEY = 'server.address.history';

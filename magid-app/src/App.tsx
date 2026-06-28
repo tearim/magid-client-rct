@@ -38,6 +38,7 @@ export default function App() {
       const storyXml  = prefs.get(PREF_KEYS.STORY_XML);
       if (armXml && storyXml) {
         try {
+          await sendCommand('')
           await requestXml(url, storyXml, useMagidStore.getState().sessionId ?? undefined);
         } catch {
           showMessage('Failed to load saved XML');

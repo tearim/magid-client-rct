@@ -16,6 +16,8 @@ interface Props {
 export function OptionsModal({ baseUrl, onBaseUrlChange, onClose, onMessage, onOpenStats, focusOnUrl }: Props) {
   const xmlList        = useMagidStore((s) => s.xmlList);
   const refreshXmlList = useMagidStore((s) => s.refreshXmlList);
+  const clearCssFiles  = useMagidStore((s) => s.clearCssFiles);
+  const loadResponse   = useMagidStore((s) => s.loadResponse);
 
   const [serverAddr, setServerAddr]     = useState(() => prefs.get(PREF_KEYS.SERVER_ADDRESS, baseUrl));
   const [selectedXml, setSelectedXml]  = useState(() => prefs.get(PREF_KEYS.STORY_XML));
@@ -46,8 +48,10 @@ export function OptionsModal({ baseUrl, onBaseUrlChange, onClose, onMessage, onO
   const handleArmXml = async () => {
     if (!selectedXml) return;
     setArmingXml(true);
+    clearCssFiles();
     try {
-      await requestXml(serverAddr, selectedXml, useMagidStore.getState().sessionId ?? undefined);
+      const raw = await requestXml(serverAddr, selectedXml, useMagidStore.getState().sessionId ?? undefined);
+      loadResponse(raw);
       onMessage('XML armed: ' + selectedXml);
     } catch {
       onMessage('Failed to arm XML');

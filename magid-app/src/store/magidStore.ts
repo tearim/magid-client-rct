@@ -89,10 +89,10 @@ export const useMagidStore = create<MagidState>((set, get) => ({
   isLoading: false,
   error: null,
   toasts: [],
-  sessionId: null,
-  fileRequestToken: null,
+  sessionId: prefs.get(PREF_KEYS.SESSION_ID) || null,
+  fileRequestToken: prefs.get(PREF_KEYS.FILE_REQUEST_TOKEN) || null,
   xmlList: [],
-  serverConnected: false,
+  serverConnected: !!prefs.get(PREF_KEYS.SESSION_ID),
   serverName: null,
   serverVersion: null,
   serverDescription: null,
@@ -135,8 +135,14 @@ export const useMagidStore = create<MagidState>((set, get) => ({
         'server-description': serverDescription,
         'server-icon': serverIcon,
       } = el.data;
-      if (sessionId) set({ sessionId, serverConnected: true });
-      if (token) set({ fileRequestToken: token });
+      if (sessionId) {
+        set({ sessionId, serverConnected: true });
+        prefs.set(PREF_KEYS.SESSION_ID, sessionId);
+      }
+      if (token) {
+        set({ fileRequestToken: token });
+        prefs.set(PREF_KEYS.FILE_REQUEST_TOKEN, token);
+      }
       if (xmls) set({ xmlList: Array.isArray(xmls) ? xmls : (xmls as Record<string, unknown>)?.['xmls'] as XmlEntry[] ?? [] });
       if (serverName !== undefined) set({ serverName });
       if (serverVersion !== undefined) set({ serverVersion });
@@ -212,6 +218,8 @@ export const useMagidStore = create<MagidState>((set, get) => ({
         // Stale session: credentials rejected by server — drop them and re-establish.
         if (isStaleSessionError(serverError)) {
           set({ sessionId: null, fileRequestToken: null });
+          prefs.set(PREF_KEYS.SESSION_ID, '');
+          prefs.set(PREF_KEYS.FILE_REQUEST_TOKEN, '');
           const recoveryRaw = await apiSendCommand(baseUrl, '', {}, undefined);
           if (!parseServerError(recoveryRaw)) {
             loadResponse(recoveryRaw);
@@ -316,7 +324,7 @@ export const useMagidStore = create<MagidState>((set, get) => ({
     const { baseUrl, sessionId } = get();
     try {
       const list = await apiGetXmlList(baseUrl, sessionId ?? undefined);
-      set({ xmlList: list });
+      if (list.length > 0) set({ xmlList: list });
     } catch {
       // silent — list stays as-is
     }
@@ -330,10 +338,13 @@ export const useMagidStore = create<MagidState>((set, get) => ({
       // Session may already be gone on the server side; proceed with cleanup.
     }
     get().clearCssFiles();
+    prefs.set(PREF_KEYS.SESSION_ID, '');
+    prefs.set(PREF_KEYS.FILE_REQUEST_TOKEN, '');
     set({
       sessionId: null,
       fileRequestToken: null,
       connected: false,
+      serverConnected: false,
       elements: [],
       menuClass: '',
       currentScene: '',
