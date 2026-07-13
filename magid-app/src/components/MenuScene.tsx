@@ -1,12 +1,14 @@
 import { useEffect, useRef } from 'react';
+import type { ReactNode } from 'react';
 import type { MenuResponse } from '../types/protocol';
 import { CommandButton } from './CommandButton';
+import { DetachedElement } from './DetachedElement';
 import { useAudio } from '../hooks/useAudio';
 import { useTypewriter } from '../hooks/useTypewriter';
 import { prefs, PREF_KEYS } from '../prefs/prefHelper';
 import { useMagidCommand } from '../hooks/useMagidCommand';
 import { useMagidStore } from '../store/magidStore';
-import { renderWithBreaks } from '../lib/renderText';
+import { renderTextWithAnchors } from '../lib/renderText';
 
 interface Props {
   data: MenuResponse;
@@ -21,11 +23,30 @@ export function MenuScene({ data }: Props) {
   const skipTimelines = prefs.getBoolean(PREF_KEYS.NARRATION_IGNORE_TEXT_TL);
   const rawDesc = data['menu-description'] ?? '';
   const displayed = useTypewriter(rawDesc, skipTimelines);
+  const typingComplete = displayed === rawDesc;
+
+  const detachedElements = data['detached-elements'] ?? [];
+  const prependEls = detachedElements.filter((d) => d.detached === 'prepend');
+  const appendEls = detachedElements.filter((d) => d.detached === 'append');
+  const anchors: Record<string, ReactNode> = {};
+  for (const d of detachedElements) {
+    if (d.detached === 'by-anchor' && d['text-anchor']) {
+      anchors[d['text-anchor']] = <DetachedElement data={d} />;
+    }
+  }
 
   const rawAudioSrc = data['menu-background-music'];
-  const audioSrc = rawAudioSrc && fileRequestToken
-    ? (() => { const u = new URL(rawAudioSrc); u.searchParams.set('file-request-token', fileRequestToken); return u.toString(); })()
-    : rawAudioSrc;
+  let audioSrc = rawAudioSrc;
+  if (rawAudioSrc && fileRequestToken) {
+    try {
+      const u = new URL(rawAudioSrc);
+      u.searchParams.set('file-request-token', fileRequestToken);
+      audioSrc = u.toString();
+    } catch (e) {
+      console.warn(`[magid] Invalid menu-background-music URL: ${rawAudioSrc}`, e);
+      audioSrc = undefined;
+    }
+  }
   useAudio(audioSrc, volume);
 
   useEffect(() => {
@@ -48,7 +69,9 @@ export function MenuScene({ data }: Props) {
     <div className="magid-menu-textarea">
       {rawDesc && (
         <div ref={descRef} className="magid-menu-description">
-          {renderWithBreaks(displayed)}
+          {prependEls.map((d, i) => <DetachedElement key={`prepend-${i}`} data={d} />)}
+          {renderTextWithAnchors(displayed, anchors)}
+          {typingComplete && appendEls.map((d, i) => <DetachedElement key={`append-${i}`} data={d} />)}
         </div>
       )}
       <div className="magid-menu-buttons">

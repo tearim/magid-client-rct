@@ -10,7 +10,9 @@
       "PowerShell(Get-ChildItem \"C:\\\\DevDen\\\\magid-client-rct\\\\magid-app\\\\src\" -Recurse | Where-Object { !$_.PSIsContainer } | ForEach-Object { $_.FullName })",
       "Bash(Get-ChildItem -Path \"C:\\\\DevDen\\\\magid-client-rct\\\\magid-app\\\\src\" -Recurse -Filter \"*.tsx\" -o)",
       "Bash(Select-Object -ExpandProperty FullName)",
-      "PowerShell(Get-ChildItem \"C:\\\\DevDen\\\\magid-client-rct\\\\magid-app\" -File | ForEach-Object { $_.Name })"
+      "PowerShell(Get-ChildItem \"C:\\\\DevDen\\\\magid-client-rct\\\\magid-app\" -File | ForEach-Object { $_.Name })",
+      "Bash(git stash *)",
+      "Bash(npx eslint *)"
     ]
   }
 }

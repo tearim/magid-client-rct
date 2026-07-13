@@ -12,6 +12,24 @@ export interface MenuResponse {
   'menu-class'?: string;
   'menu-css'?: string;
   'menu-background-music'?: string;
+  // Populated client-side (magidStore's loadResponse pre-pass) from any "detached"
+  // elements in the same response batch — not present on the wire on this object.
+  'detached-elements'?: DetachedElementResponse[];
+}
+
+// An element whose markup lives outside the normal element stream: it must be
+// spliced into the accompanying menu's description (see magidStore's loadResponse).
+export interface DetachedElementResponse {
+  detached: 'by-anchor' | 'append' | 'prepend';
+  'text-anchor'?: string;
+  'element-type': string;
+  css?: string;
+  class?: string;
+  // element-type: 'input'
+  'input-type'?: string;
+  'input-label'?: string;
+  'input-name'?: string;
+  'input-value'?: string;
 }
 
 export interface NarrationResponse {
@@ -61,6 +79,7 @@ export type ServerResponse =
   | CommandResponse
   | ConfigResponse
   | VisualResponse
+  | DetachedElementResponse
   | ResponsesWrapper;
 
 export interface XmlEntry {

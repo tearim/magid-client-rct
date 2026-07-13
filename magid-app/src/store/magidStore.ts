@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { parseResponse, type ParsedElement } from '../lib/elementFactory';
 import { injectStyleLink, clearInjectedStylesheets } from '../lib/cssUtils';
 import { sendCommand as apiSendCommand, endSession as apiEndSession, getXmlList as apiGetXmlList } from '../api/magidClient';
-import type { ConfigData, ServerErrorPayload, XmlEntry } from '../types/protocol';
+import type { ConfigData, DetachedElementResponse, ServerErrorPayload, XmlEntry } from '../types/protocol';
 import { prefs, PREF_KEYS } from '../prefs/prefHelper';
 
 export interface Toast {
@@ -17,6 +17,7 @@ interface MagidState {
   menuClass: string;
   elements: ParsedElement[];
   envVars: Record<string, string>;
+  userInputs: Record<string, string>;
   cssFileSources: Record<string, string>;
   isLoading: boolean;
   error: string | null;
@@ -40,6 +41,7 @@ interface MagidState {
   clearCssFiles: () => void;
   setVar: (name: string, value: string) => void;
   getVar: (name: string) => string | undefined;
+  setUserInput: (name: string, value: string) => void;
   isVar: (name: string, expected: string) => boolean;
   commandRequiresCssReloading: (cmd: string) => boolean;
   addToast: (message: string) => void;
@@ -61,6 +63,23 @@ const STALE_SESSION_ERROR_CODE = 'SESSION_NOT_FOUND';
 function isStaleSessionError(error: ServerErrorPayload): boolean {
   if (error['error-code']) return error['error-code'] === STALE_SESSION_ERROR_CODE;
   return error.message === 'Client id/File request token was not found';
+}
+
+// Detached elements don't render standalone — they're spliced into whichever
+// menu's description shares their response batch (see loadResponse pre-pass).
+function collectDetached(elements: ParsedElement[], acc: DetachedElementResponse[]): void {
+  for (const el of elements) {
+    if (el.type === 'detached') acc.push(el.data);
+    else if (el.type === 'responses') collectDetached(el.elements, acc);
+  }
+}
+
+function userInputExtra(get: () => MagidState): Record<string, string> {
+  const extra: Record<string, string> = {};
+  for (const [k, v] of Object.entries(get().userInputs)) {
+    extra[`user-input-${k}`] = v;
+  }
+  return extra;
 }
 
 function applyConfig(data: ConfigData, get: () => MagidState) {
@@ -85,6 +104,7 @@ export const useMagidStore = create<MagidState>((set, get) => ({
   menuClass: '',
   elements: [],
   envVars: {},
+  userInputs: {},
   cssFileSources: {},
   isLoading: false,
   error: null,
@@ -122,6 +142,11 @@ export const useMagidStore = create<MagidState>((set, get) => ({
     const { baseUrl } = get();
     const parsed = parseResponse(json, baseUrl);
 
+    // Detached elements are never rendered on their own — they get stapled onto
+    // whichever "menu" element shares this same response batch, below.
+    const detachedElements: DetachedElementResponse[] = [];
+    collectDetached(parsed, detachedElements);
+
     // Pre-pass: apply session credentials before config so the file-request-token
     // is available when CSS files are loaded from the same response.
     const applySessionEl = (el: ParsedElement) => {
@@ -155,15 +180,19 @@ export const useMagidStore = create<MagidState>((set, get) => ({
     }
 
     const renderElements: ParsedElement[] = [];
+    let sawMenu = false;
     for (const el of parsed) {
       if (el.type === 'config') {
         applyConfig(el.data.config, get);
       } else if (el.type === 'session') {
         // already applied in the pre-pass above
+      } else if (el.type === 'detached') {
+        // stapled onto the menu element(s) below instead of rendering standalone
       } else if (el.type === 'menu') {
+        sawMenu = true;
         const name = el.data['menu-name'] ?? el.data.menu;
         if (name) set({ currentScene: name, menuClass: el.data['menu-class'] ?? '' });
-        renderElements.push(el);
+        renderElements.push({ ...el, data: { ...el.data, 'detached-elements': detachedElements } });
       } else if (el.type === 'responses') {
         const inner: ParsedElement[] = [];
         for (const child of el.elements) {
@@ -171,11 +200,14 @@ export const useMagidStore = create<MagidState>((set, get) => ({
             applyConfig(child.data.config, get);
           } else if (child.type === 'session') {
             // already applied in the pre-pass above
+          } else if (child.type === 'detached') {
+            // stapled onto the menu element(s) below instead of rendering standalone
+          } else if (child.type === 'menu') {
+            sawMenu = true;
+            const name = child.data['menu-name'] ?? child.data.menu;
+            if (name) set({ currentScene: name, menuClass: child.data['menu-class'] ?? '' });
+            inner.push({ ...child, data: { ...child.data, 'detached-elements': detachedElements } });
           } else {
-            if (child.type === 'menu') {
-              const name = child.data['menu-name'] ?? child.data.menu;
-              if (name) set({ currentScene: name, menuClass: child.data['menu-class'] ?? '' });
-            }
             inner.push(child);
           }
         }
@@ -185,6 +217,19 @@ export const useMagidStore = create<MagidState>((set, get) => ({
       }
     }
 
+    // A new menu/scene invalidates whatever the user typed into the previous
+    // one's inputs — don't let stale values leak into future commands. Seed
+    // fresh defaults from any "input-value" the server sent on this batch's
+    // detached elements.
+    if (sawMenu) {
+      const initialInputs: Record<string, string> = {};
+      for (const d of detachedElements) {
+        if (d['element-type'] === 'input' && d['input-name'] && d['input-value'] !== undefined) {
+          initialInputs[d['input-name']] = d['input-value'];
+        }
+      }
+      set({ userInputs: initialInputs });
+    }
     set({ elements: renderElements, error: null });
   },
 
@@ -200,10 +245,10 @@ export const useMagidStore = create<MagidState>((set, get) => ({
       get().clearCssFiles();
       const envVars = { ...get().envVars };
       delete envVars['freshness-key'];
-      set({ currentScene: '', menuClass: '', envVars });
+      set({ currentScene: '', menuClass: '', envVars, userInputs: {} });
     }
 
-    const extra: Record<string, string> = {};
+    const extra: Record<string, string> = userInputExtra(get);
     const freshnessKey = get().getVar('freshness-key');
     if (freshnessKey) extra['freshness-key'] = freshnessKey;
     const currentScene = get().currentScene;
@@ -260,7 +305,7 @@ export const useMagidStore = create<MagidState>((set, get) => ({
           ...(correctedScene !== undefined && { currentScene: correctedScene }),
         });
 
-        const retryExtra: Record<string, string> = {};
+        const retryExtra: Record<string, string> = userInputExtra(get);
         if (correctedKey) retryExtra['freshness-key'] = correctedKey;
         if (correctedScene) retryExtra['current-scene'] = correctedScene;
 
@@ -311,6 +356,10 @@ export const useMagidStore = create<MagidState>((set, get) => ({
 
   isVar: (name, expected) => get().envVars[name] === expected,
 
+  setUserInput: (name, value) => {
+    set((s) => ({ userInputs: { ...s.userInputs, [name]: value } }));
+  },
+
   addToast: (message) => {
     const id = crypto.randomUUID();
     set((s) => ({ toasts: [...s.toasts, { id, message }] }));
@@ -349,6 +398,7 @@ export const useMagidStore = create<MagidState>((set, get) => ({
       menuClass: '',
       currentScene: '',
       envVars: {},
+      userInputs: {},
     });
   },
 }));

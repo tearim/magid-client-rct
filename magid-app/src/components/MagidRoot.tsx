@@ -20,6 +20,7 @@ export function MagidElement({ el, onVisualComplete }: ElementProps) {
     case 'command':   return <CommandButton data={el.data} onClick={sendCmd} />;
     case 'visual':    return <VisualFade data={el.data} onComplete={onVisualComplete} />;
     case 'responses': return <ResponsesContainer elements={el.elements} />;
+    case 'detached':  return null; // spliced into a menu's description by the store; nothing to render standalone
     default:          return null;
   }
 }

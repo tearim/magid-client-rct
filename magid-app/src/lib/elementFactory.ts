@@ -6,6 +6,7 @@ import type {
   ConfigResponse,
   VisualResponse,
   SessionResponse,
+  DetachedElementResponse,
 } from '../types/protocol';
 
 export type ParsedElement =
@@ -15,6 +16,7 @@ export type ParsedElement =
   | { type: 'config'; data: ConfigResponse }
   | { type: 'visual'; data: VisualResponse }
   | { type: 'session'; data: SessionResponse }
+  | { type: 'detached'; data: DetachedElementResponse }
   | { type: 'responses'; elements: ParsedElement[] };
 
 type RawObject = Record<string, unknown>;
@@ -52,6 +54,9 @@ const ELEMENT_PARSERS: Record<string, ElementParser> = {
   'menu-options':  (obj) => ({ type: 'menu',      data: obj as unknown as MenuResponse }),
   // Session credentials sent on the initial empty command
   'session-id':    (obj) => ({ type: 'session',   data: obj as unknown as SessionResponse }),
+  // Detached element: spliced into the accompanying menu's description client-side
+  // (see magidStore's loadResponse pre-pass), never rendered as a standalone element.
+  detached:        (obj) => ({ type: 'detached',  data: obj as unknown as DetachedElementResponse }),
 };
 
 function resolveStringsInObject(obj: unknown, baseUrl: string): unknown {
@@ -96,4 +101,3 @@ export function parseResponse(json: object, baseUrl: string): ParsedElement[] {
   }
   return elements;
 }
-``
