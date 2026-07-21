@@ -3,6 +3,7 @@ import { parseResponse, type ParsedElement } from '../lib/elementFactory';
 import { injectStyleLink, clearInjectedStylesheets } from '../lib/cssUtils';
 import { sendCommand as apiSendCommand, endSession as apiEndSession, getXmlList as apiGetXmlList } from '../api/magidClient';
 import type { ConfigData, DetachedElementResponse, ServerErrorPayload, XmlEntry } from '../types/protocol';
+import { ERROR_CODES, isConnectivityBlockingCode } from '../types/errorCodes';
 import { prefs, PREF_KEYS } from '../prefs/prefHelper';
 
 export interface Toast {
@@ -31,11 +32,14 @@ interface MagidState {
   serverVersion: string | null;
   serverDescription: string | null;
   serverIcon: string | null;
+  connectivityBlockedError: { code: string; message: string } | null;
 
   setBaseUrl: (url: string) => void;
   refreshXmlList: () => Promise<void>;
   setConnected: (v: boolean) => void;
-  loadResponse: (raw: string) => void;
+  // Returns false when `raw` was a server error payload (nothing to render), true otherwise.
+  loadResponse: (raw: string) => boolean;
+  handleServerError: (error: ServerErrorPayload) => void;
   sendCommand: (cmd: string) => Promise<void>;
   addCssFile: (url: string) => void;
   clearCssFiles: () => void;
@@ -57,11 +61,8 @@ function parseServerError(raw: string): ServerErrorPayload | null {
   return null;
 }
 
-// TODO: replace placeholder once the server defines the alphanumeric code for this error
-const STALE_SESSION_ERROR_CODE = 'SESSION_NOT_FOUND';
-
 function isStaleSessionError(error: ServerErrorPayload): boolean {
-  if (error['error-code']) return error['error-code'] === STALE_SESSION_ERROR_CODE;
+  if (error.code) return error.code === ERROR_CODES.SESSION_NOT_FOUND;
   return error.message === 'Client id/File request token was not found';
 }
 
@@ -117,8 +118,9 @@ export const useMagidStore = create<MagidState>((set, get) => ({
   serverVersion: null,
   serverDescription: null,
   serverIcon: null,
+  connectivityBlockedError: null,
 
-  setBaseUrl: (url) => set({
+  setBaseUrl: (url) => set((s) => s.baseUrl === url ? {} : {
     baseUrl: url,
     xmlList: [],
     serverConnected: false,
@@ -130,13 +132,19 @@ export const useMagidStore = create<MagidState>((set, get) => ({
   setConnected: (v) => set({ connected: v }),
   cssReloadingCommands: ['reload-xml', 'set-xml'],
 
-  loadResponse: (raw: string) => {
+  loadResponse: (raw: string): boolean => {
     let json: object;
     try {
       json = JSON.parse(raw);
     } catch {
       set({ error: 'Server returned unexpected data' });
-      return;
+      return false;
+    }
+
+    if ((json as { status?: string }).status === 'error') {
+      get().handleServerError(json as ServerErrorPayload);
+      set({ elements: [] });
+      return false;
     }
 
     const { baseUrl } = get();
@@ -230,7 +238,15 @@ export const useMagidStore = create<MagidState>((set, get) => ({
       }
       set({ userInputs: initialInputs });
     }
-    set({ elements: renderElements, error: null });
+    set({ elements: renderElements, error: null, connectivityBlockedError: null });
+    return true;
+  },
+
+  handleServerError: (error) => {
+    if (error.message) get().addToast(error.message);
+    if (isConnectivityBlockingCode(error.code)) {
+      set({ connectivityBlockedError: { code: error.code ?? 'UNKNOWN', message: error.message ?? 'The story cannot continue.' } });
+    }
   },
 
   commandRequiresCssReloading: (cmd: string): boolean => {
@@ -272,6 +288,14 @@ export const useMagidStore = create<MagidState>((set, get) => ({
           } else {
             get().addToast('Session expired — could not re-establish connection.');
           }
+          return;
+        }
+
+        // Fatal/blocking errors (e.g. a story file that can't be parsed) aren't
+        // recoverable by retrying the same command — surface it and stop.
+        if (isConnectivityBlockingCode(serverError.code)) {
+          get().handleServerError(serverError);
+          set({ elements: [] });
           return;
         }
 
@@ -399,6 +423,7 @@ export const useMagidStore = create<MagidState>((set, get) => ({
       currentScene: '',
       envVars: {},
       userInputs: {},
+      connectivityBlockedError: null,
     });
   },
 }));

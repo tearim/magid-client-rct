@@ -14,6 +14,7 @@ export const PREF_KEYS = {
   NARRATION_IGNORE_TIMELINES: 'narration.ignoretimelines',
   NARRATION_IGNORE_TEXT_TL:   'narration.ignoretexttimelines',
   VIEWPORT_IGNORE_MAXIMIZE:   'viewport.ignoremaximization',
+  DEBUG_ALWAYS_ALLOW_CONNECTIVITY: 'debug.alwaysallowconnectivity',
   MUSIC_VOLUME:               'music.volume',
   SESSION_ID:                 'session.id',
   FILE_REQUEST_TOKEN:         'session.file-request-token',

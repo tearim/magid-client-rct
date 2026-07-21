@@ -3,9 +3,10 @@ import styles from './ServerLobbyPage.module.css';
 
 interface Props {
   onConnect: () => void;
+  connectDisabled?: boolean;
 }
 
-export function ServerLobbyPage({ onConnect }: Props) {
+export function ServerLobbyPage({ onConnect, connectDisabled }: Props) {
   const sessionId        = useMagidStore((s) => s.sessionId);
   const serverName       = useMagidStore((s) => s.serverName);
   const serverVersion    = useMagidStore((s) => s.serverVersion);
@@ -51,7 +52,7 @@ export function ServerLobbyPage({ onConnect }: Props) {
 
         {/* Connect CTA — only when session is not active */}
         {!sessionId && (
-          <button className={styles.connectBtn} onClick={onConnect}>
+          <button className={styles.connectBtn} onClick={onConnect} disabled={connectDisabled}>
             Connect
           </button>
         )}

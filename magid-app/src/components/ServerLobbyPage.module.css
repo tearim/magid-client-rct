@@ -109,9 +109,14 @@
   transition: background 0.15s, color 0.15s;
 }
 
-.connectBtn:hover {
+.connectBtn:hover:not(:disabled) {
   background: #3a3a8a;
   color: #ccccff;
+}
+
+.connectBtn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 
 /* Hint when session is active */

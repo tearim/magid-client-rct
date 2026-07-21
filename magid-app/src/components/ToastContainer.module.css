@@ -10,15 +10,69 @@
 }
 
 .toast {
+  position: relative;
   background: rgba(180, 60, 60, 0.92);
   color: #fff;
-  padding: 0.65rem 1rem;
+  padding: 0.65rem 1rem 1.6rem 1rem;
   border-radius: 6px;
   font-size: 0.85rem;
   max-width: 320px;
   pointer-events: all;
   cursor: pointer;
-  animation: toastIn 0.3s ease-out, toastOut 0.4s ease-in 4.1s forwards;
+  animation: toastIn 0.3s ease-out;
+}
+
+.toastClosing {
+  animation: toastOut 0.4s ease-in forwards;
+}
+
+.toastActions {
+  position: absolute;
+  right: 0.4rem;
+  bottom: 0.4rem;
+  display: flex;
+  gap: 0.15rem;
+}
+
+.iconBtn {
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  border-radius: 3px;
+  color: rgba(255, 255, 255, 0.75);
+  cursor: pointer;
+}
+
+.iconBtn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.15);
+  color: #fff;
+}
+
+.iconBtn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.iconBtnActive,
+.iconBtnActive:hover:not(:disabled) {
+  color: #ffd76a;
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.iconBtn svg {
+  width: 12px;
+  height: 12px;
+  display: block;
+}
+
+.copiedGlyph {
+  font-size: 0.75rem;
+  line-height: 1;
 }
 
 @keyframes toastIn {

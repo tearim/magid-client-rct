@@ -79,6 +79,12 @@
   color: #bbbbff;
 }
 
+.keyDisabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
 /* Warning line */
 .warning {
   display: flex;

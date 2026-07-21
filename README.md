@@ -11,7 +11,6 @@ This project mirrors an earlier JavaFX desktop client and is designed to make Ma
 ## What this repository contains
 
 - **`magid-app/`** — the actual React + TypeScript application (Vite-based)
-- **`REACT_BLUEPRINT.md`** — implementation blueprint and protocol/design reference used during development
 
 > Note: this client was initially generated with Claude under close human supervision, with parts hand-crafted and refined.
 
@@ -78,7 +77,7 @@ Zustand was selected because it fits the app's protocol-driven architecture:
 - `magid://` anchors in response strings are resolved to the configured base server URL.
 - Text can include `DCSTP_` timeline markers to trigger typewriter-style progressive rendering.
 
-For deeper protocol and architecture details, see `REACT_BLUEPRINT.md`.
+For deeper protocol and architecture details, see `CLAUDE.md` and `magid-app/src/types/protocol.ts`.
 
 ## Requirements
 

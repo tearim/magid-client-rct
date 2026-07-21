@@ -25,6 +25,7 @@ export function OptionsModal({ baseUrl, onBaseUrlChange, onClose, onMessage, onO
   const [ignoreTimelines, setIgnoreTimelines] = useState(() => prefs.getBoolean(PREF_KEYS.NARRATION_IGNORE_TIMELINES));
   const [ignoreTextTL, setIgnoreTextTL]       = useState(() => prefs.getBoolean(PREF_KEYS.NARRATION_IGNORE_TEXT_TL));
   const [ignoreMaximize, setIgnoreMaximize]   = useState(() => prefs.getBoolean(PREF_KEYS.VIEWPORT_IGNORE_MAXIMIZE));
+  const [debugAlwaysAllowConnectivity, setDebugAlwaysAllowConnectivity] = useState(() => prefs.getBoolean(PREF_KEYS.DEBUG_ALWAYS_ALLOW_CONNECTIVITY));
   const [volume, setVolume]            = useState(() => {
     const raw = parseFloat(prefs.get(PREF_KEYS.MUSIC_VOLUME, ''));
     return isNaN(raw) ? 0.8 : raw;
@@ -51,11 +52,23 @@ export function OptionsModal({ baseUrl, onBaseUrlChange, onClose, onMessage, onO
     clearCssFiles();
     try {
       const raw = await requestXml(serverAddr, selectedXml, useMagidStore.getState().sessionId ?? undefined);
-      loadResponse(raw);
-      onMessage('XML armed: ' + selectedXml);
+      const ok = loadResponse(raw);
+      if (!ok) {
+        // Server rejected the XML (e.g. a parse error) — the resulting message/block
+        // state is already surfaced by the store; stay open so the user can pick another.
+        setArmingXml(false);
+        return;
+      }
+
+      prefs.set(PREF_KEYS.STORY_XML, selectedXml);
+
+      const entry = xmlList.find((x) => x.path === selectedXml);
+      const fileName = selectedXml.split(/[\\/]/).pop() || selectedXml;
+      const fullAddress = entry?.absolutePath || selectedXml;
+      onMessage(`XML armed: ${entry?.name || fileName} (${fullAddress})`);
+      onClose();
     } catch {
       onMessage('Failed to arm XML');
-    } finally {
       setArmingXml(false);
     }
   };
@@ -67,6 +80,7 @@ export function OptionsModal({ baseUrl, onBaseUrlChange, onClose, onMessage, onO
     prefs.setBoolean(PREF_KEYS.NARRATION_IGNORE_TIMELINES, ignoreTimelines);
     prefs.setBoolean(PREF_KEYS.NARRATION_IGNORE_TEXT_TL, ignoreTextTL);
     prefs.setBoolean(PREF_KEYS.VIEWPORT_IGNORE_MAXIMIZE, ignoreMaximize);
+    prefs.setBoolean(PREF_KEYS.DEBUG_ALWAYS_ALLOW_CONNECTIVITY, debugAlwaysAllowConnectivity);
     prefs.setDouble(PREF_KEYS.MUSIC_VOLUME, volume);
     onBaseUrlChange(serverAddr);
     onClose();
@@ -147,6 +161,14 @@ export function OptionsModal({ baseUrl, onBaseUrlChange, onClose, onMessage, onO
         <label className={styles.checkRow}>
           <input type="checkbox" checked={ignoreMaximize} onChange={(e) => setIgnoreMaximize(e.target.checked)} />
           Ignore maximization requests
+        </label>
+        <label className={styles.checkRow}>
+          <input
+            type="checkbox"
+            checked={debugAlwaysAllowConnectivity}
+            onChange={(e) => setDebugAlwaysAllowConnectivity(e.target.checked)}
+          />
+          Debug mode: Always allow connectivity
         </label>
 
         <label className={styles.field}>

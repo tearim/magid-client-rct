@@ -13,7 +13,10 @@ import styles from './App.module.css';
 
 export default function App() {
   const { elements, isLoading, error, baseUrl, setBaseUrl, sendCommand, connected, menuClass,
-          sessionId, endSession, serverConnected } = useMagidStore();
+          sessionId, endSession, serverConnected, connectivityBlockedError } = useMagidStore();
+
+  const debugAlwaysAllowConnectivity = prefs.getBoolean(PREF_KEYS.DEBUG_ALWAYS_ALLOW_CONNECTIVITY);
+  const connectDisabled = !!connectivityBlockedError && !debugAlwaysAllowConnectivity;
 
   const [showOptions, setShowOptions]        = useState(false);
   const [showStats, setShowStats]            = useState(false);
@@ -117,7 +120,8 @@ export default function App() {
             <button
               className={styles.connectBtn}
               onClick={handleConnect}
-              disabled={isLoading}
+              disabled={isLoading || connectDisabled}
+              title={connectDisabled ? connectivityBlockedError?.message : undefined}
             >
               Connect
             </button>
@@ -153,14 +157,20 @@ export default function App() {
         </div>
       </header>
 
+      {connectivityBlockedError && !debugAlwaysAllowConnectivity && (
+        <div className={styles.blockedBanner} role="alert">
+          <strong>[{connectivityBlockedError.code}]</strong> {connectivityBlockedError.message}
+        </div>
+      )}
+
       <main className={[styles.main, menuClass].filter(Boolean).join(' ')}>
         {elements.length > 0
           ? <MagidRoot elements={elements} />
           : isLoading
             ? null
             : serverConnected
-              ? <ServerLobbyPage onConnect={handleConnect} />
-              : <WelcomePage connectFunction={handleConnect} optionsFunction={() => handleOptions()} />}
+              ? <ServerLobbyPage onConnect={handleConnect} connectDisabled={connectDisabled} />
+              : <WelcomePage connectFunction={handleConnect} optionsFunction={() => handleOptions()} connectDisabled={connectDisabled} />}
       </main>
 
       {showOptions && (

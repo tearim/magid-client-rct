@@ -4,9 +4,10 @@ import styles from './WelcomePage.module.css';
 interface Props {
   connectFunction: () => void;
   optionsFunction: () => void;
+  connectDisabled?: boolean;
 }
 
-export function WelcomePage({ connectFunction, optionsFunction }: Props) {
+export function WelcomePage({ connectFunction, optionsFunction, connectDisabled }: Props) {
   const serverName        = useMagidStore((s) => s.serverName);
   const serverDescription = useMagidStore((s) => s.serverDescription);
   const serverIcon        = useMagidStore((s) => s.serverIcon);
@@ -27,7 +28,11 @@ export function WelcomePage({ connectFunction, optionsFunction }: Props) {
         )}
 
         <p className={styles.body}>
-          Press <kbd onClick={connectFunction} className={styles.key}>Connect</kbd> to connect to a Magid server.
+          Press <kbd
+            onClick={connectDisabled ? undefined : connectFunction}
+            className={`${styles.key} ${connectDisabled ? styles.keyDisabled : ''}`}
+            aria-disabled={connectDisabled}
+          >Connect</kbd> to connect to a Magid server.
           Press <kbd onClick={optionsFunction} className={styles.key}>Options</kbd> if you need to set the server address.
         </p>
 

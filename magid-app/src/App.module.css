@@ -167,6 +167,14 @@
 }
 .endSessionNo:hover { background: #222; color: #ccc; }
 
+.blockedBanner {
+  padding: 0.5rem 1rem;
+  background: #2a0a0a;
+  border-bottom: 1px solid #6a1a1a;
+  color: #ff9999;
+  font-size: 0.85rem;
+}
+
 .main {
   flex: 1;
   display: flex;
