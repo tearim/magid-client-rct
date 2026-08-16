@@ -1,8 +1,9 @@
-import type { CSSProperties, ReactNode } from 'react';
+import {type CSSProperties, type ReactNode, useEffect, useRef} from 'react';
 import { useId } from 'react';
 import type { DetachedElementResponse } from '../types/protocol';
 import { useMagidStore } from '../store/magidStore';
 import { parseMagidCss } from '../lib/magidCss';
+import {useDebounce} from "../hooks/useDebounce.ts";
 
 interface Props {
   data: DetachedElementResponse;
@@ -15,6 +16,7 @@ interface InputTypeProps {
   className: string;
   style: CSSProperties | undefined;
   onChange: (value: string) => void;
+  isAsync: boolean;
 }
 
 // Single source of truth: maps input-type → renderer. Add new input types here only.
@@ -59,8 +61,11 @@ export function InputElement({ data }: Props) {
   const name = data['input-name'] ?? '';
   const value = useMagidStore((s) => s.userInputs[name] ?? '');
   const setUserInput = useMagidStore((s) => s.setUserInput);
+  const debouncedValue = useDebounce(value, 500);
+  const firstRun = useRef(true);
 
   const inputType = data['input-type'] ?? 'text';
+  const isAsync = (data['input-async'] ?? "").toLowerCase() === 'true';
   const render = INPUT_TYPE_RENDERERS[inputType];
   if (!render) {
     console.warn(`[magid] Unknown input-type: ${inputType}`);
@@ -69,11 +74,29 @@ export function InputElement({ data }: Props) {
 
   const style = data.css ? parseMagidCss(data.css) : undefined;
   const className = ['magid-input-element', data.class].filter(Boolean).join(' ');
+  const handleChange = (newValue: string) => {
+    setUserInput(name, newValue)
+    if ( isAsync ) {
+      console.log("async")
+    }
+  };
+
+  useEffect(() => {
+    if ( firstRun.current ) {
+      firstRun.current = false;
+      return;
+    }
+    // Only trigger the command if it's async AND the debounced value actually changed
+    if (isAsync && debouncedValue) {
+      console.log("async -> debounced")
+     useMagidStore.getState().sendCommand('update-symbol');
+    }
+  }, [debouncedValue, isAsync]);
 
   return (
     <span className="magid-input-wrapper">
       {data['input-label'] && <label htmlFor={id}>{data['input-label']}</label>}
-      {render({ id, name, value, className, style, onChange: (v) => setUserInput(name, v) })}
+      {render({ id, name, value, className, style, onChange: handleChange, isAsync })}
     </span>
   );
 }

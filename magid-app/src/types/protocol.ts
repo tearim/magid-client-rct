@@ -30,6 +30,7 @@ export interface DetachedElementResponse {
   'input-label'?: string;
   'input-name'?: string;
   'input-value'?: string;
+  'input-async'?: string;
 }
 
 export interface NarrationResponse {
