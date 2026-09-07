@@ -4,11 +4,16 @@ import type { ReactNode } from 'react';
 export function renderWithBreaks(text: string): ReactNode {
   const lines = text.split(/\r?\n/);
   return lines.map((line, i) => (
-    <Fragment key={i}>
-      {i > 0 && <br />}
-      {line}
-    </Fragment>
-  ));
+       <Fragment key={i}>
+          {i > 0 && <br />}
+          {line.substring(0, line.length - 4)}
+          <span className={"lastchar3"}>{line.substring(line.length - 4, line.length - 3)}</span>
+          <span  className={"lastchar2"}>{line.substring(line.length - 3, line.length - 2)}</span>
+          <span className={"lastchar1"}>{line.substring(line.length - 2, line.length - 1)}</span>
+          <span className={"lastchar"}>{line.substring(line.length - 1, line.length)}</span>
+        </Fragment>
+
+    ));
 }
 
 function escapeRegExp(s: string): string {

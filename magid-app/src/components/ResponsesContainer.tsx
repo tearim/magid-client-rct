@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import type { ParsedElement } from '../lib/elementFactory';
 import { MagidElement } from './MagidRoot';
 
@@ -13,15 +13,27 @@ function initialUnlocked(elements: ParsedElement[]): number {
   return firstBlocker === -1 ? elements.length : firstBlocker + 1;
 }
 
+function getNarrationDeferMs(el: ParsedElement): number {
+  if (el.type !== 'narration') return 0;
+
+  const deferMs = el.data.defer ? parseInt(el.data.defer, 10) : 0;
+  return Number.isFinite(deferMs) ? deferMs : 0;
+}
+
 export function ResponsesContainer({ elements }: Props) {
   const prevElementsRef = useRef(elements);
   const [unlockedCount, setUnlockedCount] = useState(() => initialUnlocked(elements));
+  const [visibleNarrationCount, setVisibleNarrationCount] = useState(1);
 
   // Reset unlock state when elements prop identity changes (new server response)
   if (prevElementsRef.current !== elements) {
     prevElementsRef.current = elements;
     setUnlockedCount(initialUnlocked(elements));
   }
+
+  useEffect(() => {
+    setVisibleNarrationCount(1);
+  }, [elements, unlockedCount]);
 
   const handleComplete = useCallback(() => {
     setUnlockedCount((prev) => {
@@ -39,18 +51,57 @@ export function ResponsesContainer({ elements }: Props) {
     });
   }, [elements]);
 
+  const handleNarrationComplete = useCallback(() => {
+    setVisibleNarrationCount((count) => count + 1);
+  }, []);
+
   const visible = elements.slice(0, unlockedCount);
+  let queuedNarrationIndex = 0;
 
   return (
     <>
       {visible.map((el, i) => {
         const isBlockingVisual =
           el.type === 'visual' && el.data['transition-blocking'] === 'true';
+
+        if (el.type !== 'narration') {
+          return (
+            <MagidElement
+              key={i}
+              el={el}
+              onVisualComplete={isBlockingVisual ? handleComplete : undefined}
+            />
+          );
+        }
+
+        const deferMs = getNarrationDeferMs(el);
+
+        if (deferMs > 0) {
+          return (
+            <MagidElement
+              key={i}
+              el={el}
+              onVisualComplete={isBlockingVisual ? handleComplete : undefined}
+            />
+          );
+        }
+
+        const currentQueuedNarrationIndex = queuedNarrationIndex;
+        queuedNarrationIndex += 1;
+
+        if (currentQueuedNarrationIndex >= visibleNarrationCount) {
+          return null;
+        }
+
+        const isActiveNarration =
+          currentQueuedNarrationIndex === visibleNarrationCount - 1;
+
         return (
           <MagidElement
             key={i}
             el={el}
             onVisualComplete={isBlockingVisual ? handleComplete : undefined}
+            onNarrationComplete={isActiveNarration ? handleNarrationComplete : undefined}
           />
         );
       })}

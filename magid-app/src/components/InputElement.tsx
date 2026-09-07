@@ -88,7 +88,6 @@ export function InputElement({ data }: Props) {
     }
     // Only trigger the command if it's async AND the debounced value actually changed
     if (isAsync && debouncedValue) {
-      console.log("async -> debounced")
      useMagidStore.getState().sendCommand('update-symbol');
     }
   }, [debouncedValue, isAsync]);

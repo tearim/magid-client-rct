@@ -3,22 +3,31 @@ import { hasTypewriterAnimation, parseTextSegments } from '../lib/textTimeline';
 
 export function useTypewriter(raw: string, skip: boolean): string {
   const [displayed, setDisplayed] = useState('');
+  const [typeEachLetter, setTypeEachLetter] = useState(true);
+  const [typeLetterMs, setTypeLetterMs] = useState(20);
 
   useEffect(() => {
-    if (skip || !hasTypewriterAnimation(raw)) {
+    if (!typeEachLetter && ( skip || !hasTypewriterAnimation(raw) )) {
       setDisplayed(raw);
       return;
     }
-
     setDisplayed('');
     const segments = parseTextSegments(raw);
     const timers: ReturnType<typeof setTimeout>[] = [];
-
     for (const seg of segments) {
-      const t = setTimeout(() => {
-        setDisplayed((prev) => prev + seg.text);
-      }, seg.offsetMs);
-      timers.push(t);
+      if ( typeEachLetter ) {
+         for (let i = 0; i < seg.text.length; i++) {
+           timers.push(setTimeout(() => {
+             setDisplayed(seg.text.substring(0, i+1) );
+           }, i * typeLetterMs));
+         }
+      } else {
+        const t = setTimeout(() => {
+          setDisplayed((prev) => prev + seg.text);
+        }, seg.offsetMs);
+        timers.push(t);
+      }
+
     }
 
     return () => {
@@ -28,6 +37,6 @@ export function useTypewriter(raw: string, skip: boolean): string {
 
   // For non-animated text bypass state entirely — avoids a blank first render
   // because useEffect runs after paint, not during.
-  if (skip || !hasTypewriterAnimation(raw)) return raw;
+  if (!typeEachLetter && ( skip || !hasTypewriterAnimation(raw) )) return raw;
   return displayed;
 }
