@@ -25,10 +25,14 @@ export function parseTextSegments(raw: string): TextSegment[] {
     } else {
       const ms = parseInt(part.slice(0, atIdx), 10);
       const text = part.slice(atIdx + 1);
-      if (!isNaN(ms)) cumulative = ms;
+      if (!isNaN(ms)) cumulative += ms;
       segments.push({ offsetMs: cumulative, text });
     }
   }
 
   return segments;
+}
+
+export function resolveCleanText(raw: string): string {
+  return parseTextSegments(raw).map((s) => s.text).join('');
 }

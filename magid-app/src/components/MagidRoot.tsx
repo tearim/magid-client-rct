@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ParsedElement } from '../lib/elementFactory';
 import { MenuScene } from './MenuScene';
 import { NarrationText } from './NarrationText';
@@ -42,8 +42,11 @@ interface Props {
 
 export function MagidRoot({ elements, onVisualComplete }: Props) {
   const [visibleNarrationCount, setVisibleNarrationCount] = useState(1);
+  const prevElementsRef = useRef(elements);
 
   useEffect(() => {
+    if (prevElementsRef.current === elements) return;
+    prevElementsRef.current = elements;
     setVisibleNarrationCount(1);
   }, [elements]);
 

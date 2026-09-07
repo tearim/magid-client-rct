@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import type { ParsedElement } from '../lib/elementFactory';
 import { MagidElement } from './MagidRoot';
 
@@ -21,19 +21,17 @@ function getNarrationDeferMs(el: ParsedElement): number {
 }
 
 export function ResponsesContainer({ elements }: Props) {
-  const prevElementsRef = useRef(elements);
   const [unlockedCount, setUnlockedCount] = useState(() => initialUnlocked(elements));
   const [visibleNarrationCount, setVisibleNarrationCount] = useState(1);
+  const prevElementsRef = useRef(elements);
 
-  // Reset unlock state when elements prop identity changes (new server response)
-  if (prevElementsRef.current !== elements) {
+  // Reset unlock/queue state only when elements actually change (not on initial mount).
+  useEffect(() => {
+    if (prevElementsRef.current === elements) return;
     prevElementsRef.current = elements;
     setUnlockedCount(initialUnlocked(elements));
-  }
-
-  useEffect(() => {
     setVisibleNarrationCount(1);
-  }, [elements, unlockedCount]);
+  }, [elements]);
 
   const handleComplete = useCallback(() => {
     setUnlockedCount((prev) => {

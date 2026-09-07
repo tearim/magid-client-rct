@@ -4,6 +4,33 @@ import { useTypewriter } from '../hooks/useTypewriter';
 import { prefs, PREF_KEYS } from '../prefs/prefHelper';
 import { parseMagidCss } from '../lib/magidCss';
 import { renderWithBreaks } from '../lib/renderText';
+import { resolveCleanText } from '../lib/textTimeline';
+
+const NAMED_SPEEDS: Record<string, number> = {
+  slow: 30,
+  normal: 20,
+  fast: 10,
+  rapid: 5,
+};
+
+function getLetterTypingConfig(className?: string): { typeEachLetter: boolean; typeLetterMs: number } {
+  if (!className) return { typeEachLetter: false, typeLetterMs: 0 };
+
+  const match = className.match(/\btype-by-letter-(\S+)/);
+  if (!match) return { typeEachLetter: false, typeLetterMs: 0 };
+
+  const value = match[1];
+  if (value in NAMED_SPEEDS) {
+    return { typeEachLetter: true, typeLetterMs: NAMED_SPEEDS[value] };
+  }
+
+  const parsed = parseInt(value, 10);
+  if (Number.isFinite(parsed) && parsed > 0) {
+    return { typeEachLetter: true, typeLetterMs: parsed };
+  }
+
+  return { typeEachLetter: false, typeLetterMs: 0 };
+}
 
 interface Props {
   data: NarrationResponse;
@@ -40,11 +67,12 @@ export function NarrationText({ data, onComplete }: Props) {
     return () => window.removeEventListener('keydown', handler);
   }, []);
 
-  const displayed = useTypewriter(rawText, skipTimelines);
-  const completed = normalizedDeferMs === 0 && visible && displayed === rawText;
+  const letterTypingConfig = getLetterTypingConfig(data.class);
+  const displayed = useTypewriter(rawText, skipTimelines, letterTypingConfig);
+  const cleanText = resolveCleanText(rawText);
+  const completed = normalizedDeferMs === 0 && visible && displayed === cleanText;
 
   useEffect(() => {
-    console.log("Completed? ", completed)
     if (!completed) return;
     if (completionReportedRef.current) return;
 
