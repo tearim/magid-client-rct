@@ -3,7 +3,7 @@ import type { NarrationResponse } from '../types/protocol';
 import { useTypewriter } from '../hooks/useTypewriter';
 import { prefs, PREF_KEYS } from '../prefs/prefHelper';
 import { parseMagidCss } from '../lib/magidCss';
-import { renderWithBreaks } from '../lib/renderText';
+import { renderWithBreaks, TypingStyle } from '../lib/renderText';
 import { resolveCleanText } from '../lib/textTimeline';
 
 const NAMED_SPEEDS: Record<string, number> = {
@@ -13,23 +13,29 @@ const NAMED_SPEEDS: Record<string, number> = {
   rapid: 5,
 };
 
-function getLetterTypingConfig(className?: string): { typeEachLetter: boolean; typeLetterMs: number } {
-  if (!className) return { typeEachLetter: false, typeLetterMs: 0 };
+function getConsequentalTypingConfig(className?: string): { typeEachLetter: boolean; typeEachWord: boolean; typeLetterMs: number } {
+  if (!className) return { typeEachLetter: false, typeEachWord: false,  typeLetterMs: 0 };
 
   const match = className.match(/\btype-by-letter-(\S+)/);
-  if (!match) return { typeEachLetter: false, typeLetterMs: 0 };
+  const wordMatch= className.match(/\btype-by-word-(\S+)/);
 
-  const value = match[1];
+  if (!match && !wordMatch) return { typeEachLetter: false, typeEachWord: false, typeLetterMs: 0 };
+
+  const workingMatch = match ? match : wordMatch;
+  if ( !workingMatch ) return { typeEachLetter: false, typeEachWord: false,  typeLetterMs: 0 };
+  const tEL = match !== null  ;
+  const tEW = wordMatch !== null;
+  const value = workingMatch[1];
   if (value in NAMED_SPEEDS) {
-    return { typeEachLetter: true, typeLetterMs: NAMED_SPEEDS[value] };
+    return { typeEachLetter: tEL, typeEachWord: tEW, typeLetterMs: NAMED_SPEEDS[value] };
   }
 
   const parsed = parseInt(value, 10);
   if (Number.isFinite(parsed) && parsed > 0) {
-    return { typeEachLetter: true, typeLetterMs: parsed };
+    return { typeEachLetter: tEL, typeEachWord: tEW, typeLetterMs: parsed };
   }
 
-  return { typeEachLetter: false, typeLetterMs: 0 };
+  return { typeEachLetter: false, typeEachWord: false, typeLetterMs: 0 };
 }
 
 interface Props {
@@ -67,8 +73,8 @@ export function NarrationText({ data, onComplete }: Props) {
     return () => window.removeEventListener('keydown', handler);
   }, []);
 
-  const letterTypingConfig = getLetterTypingConfig(data.class);
-  const displayed = useTypewriter(rawText, skipTimelines, letterTypingConfig);
+  const consequentalTypingConfig = getConsequentalTypingConfig(data.class);
+  const displayed = useTypewriter(rawText, skipTimelines, consequentalTypingConfig);
   const cleanText = resolveCleanText(rawText);
   const completed = normalizedDeferMs === 0 && visible && displayed === cleanText;
 
@@ -85,9 +91,17 @@ export function NarrationText({ data, onComplete }: Props) {
   const classes = ['magid-default-narration', data.class].filter(Boolean).join(' ');
   const style = data.css ? parseMagidCss(data.css) : undefined;
 
+  let typingStyle = undefined;
+  if ( data.class?.includes?.('type-by-letter') ) {
+    typingStyle = TypingStyle.byLetter;
+  }
+  if ( data.class?.includes('type-by-word') ) {
+    typingStyle = TypingStyle.byWord;
+  }
+
   return (
       <div className={classes} style={style}>
-        {renderWithBreaks(displayed)}
+        {renderWithBreaks(displayed, typingStyle)}
       </div>
   );
 }
