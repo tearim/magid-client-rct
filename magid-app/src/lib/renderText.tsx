@@ -1,4 +1,4 @@
-import {Fragment,  useRef} from 'react';
+import {Fragment} from 'react';
 import type { ReactNode } from 'react';
 
 export const TypingStyle = {
@@ -7,76 +7,81 @@ export const TypingStyle = {
 } as const;
 type TypingStyle = keyof typeof TypingStyle;
 
+// Module-level state that was previously (incorrectly) stored in useRef hooks.
+// renderWithBreaks is a plain helper function, not a React component, so it
+// must not call hooks.  A single module-scoped cache is fine here because the
+// values are only used for short-lived animation-reset bookkeeping.
+let lastTimeCleared = Date.now();
+let lastRawLineUsed: string[] = [];
+
 export function renderWithBreaks(text: string, typingStyle?: TypingStyle, animationResets:number = 0  ): ReactNode {
-        const lines = text.split(/\r?\n/);
-        const lastTimeCleared = useRef(Date.now());
-        const lastRawLineUsed  = useRef(new Array<string>());
-        let needToClear = false;
-        if ( animationResets > 0) {
-            if (Date.now() > lastTimeCleared.current + animationResets) {
-                needToClear = true;
-                lastTimeCleared.current = Date.now();
-            }
+    const lines = text.split(/\r?\n/);
+    let needToClear = false;
+    if ( animationResets > 0) {
+        if (Date.now() > lastTimeCleared + animationResets) {
+            needToClear = true;
+            lastTimeCleared = Date.now();
         }
-        if ( typingStyle === TypingStyle.byLetter) {
-            return lines.map((line, i) => {
-                if (animationResets > 0) {
-                    if (lastRawLineUsed.current && lastRawLineUsed.current[i] === line && i === lines.length - 1) {
-                        needToClear = false;
-                    }
-                    lastRawLineUsed.current[i] = line;
-                    if (needToClear && i === lines.length - 1) {
-                        lastTimeCleared.current = Date.now();
-                        needToClear = false;
-                        return <Fragment key={i}>
-                            {i > 0 && <br/>}
-                            {line}
-                        </Fragment>
-                    }
+    }
+    if ( typingStyle === TypingStyle.byLetter) {
+        return lines.map((line, i) => {
+            if (animationResets > 0) {
+                if (lastRawLineUsed && lastRawLineUsed[i] === line && i === lines.length - 1) {
+                    needToClear = false;
                 }
-                return <Fragment key={i}>
-                    {i > 0 && <br/>}
-                    {line.substring(0, line.length - 4)}
-                    <span className={"lastchar3"}>{line.substring(line.length - 4, line.length - 3)}</span>
-                    <span className={"lastchar2"}>{line.substring(line.length - 3, line.length - 2)}</span>
-                    <span className={"lastchar1"}>{line.substring(line.length - 2, line.length - 1)}</span>
-                    <span className={"lastchar"}>{line.substring(line.length - 1, line.length)}</span>
-                </Fragment>
-            });
-        }
-        if (typingStyle === TypingStyle.byWord) {
-          return lines.map((line, i) => {
-             if ( lastRawLineUsed.current && lastRawLineUsed.current[i] === line && i === lines.length - 1) {
-                 needToClear = false;
-             }
-             lastRawLineUsed.current[i] = line;
-             let words = line.trim().split(/\s+/);
-             const lastWords = words.splice(-4);
-             const remainder = words.join(" ");
-             if ( needToClear && i === lines.length - 1) {
-                 lastTimeCleared.current = Date.now();
-                 needToClear = false;
-                 return <Fragment key={i}>
-                     {i > 0 && <br/>}
-                     {line}
-                 </Fragment>
-             }
+                lastRawLineUsed[i] = line;
+                if (needToClear && i === lines.length - 1) {
+                    lastTimeCleared = Date.now();
+                    needToClear = false;
+                    return <Fragment key={i}>
+                        {i > 0 && <br/>}
+                        {line}
+                    </Fragment>
+                }
+            }
+            return <Fragment key={i}>
+                {i > 0 && <br/>}
+                {line.substring(0, line.length - 4)}
+                <span className={"lastchar3"}>{line.substring(line.length - 4, line.length - 3)}</span>
+                <span className={"lastchar2"}>{line.substring(line.length - 3, line.length - 2)}</span>
+                <span className={"lastchar1"}>{line.substring(line.length - 2, line.length - 1)}</span>
+                <span className={"lastchar"}>{line.substring(line.length - 1, line.length)}</span>
+            </Fragment>
+        });
+    }
+    if (typingStyle === TypingStyle.byWord) {
+      return lines.map((line, i) => {
+         if ( lastRawLineUsed && lastRawLineUsed[i] === line && i === lines.length - 1) {
+             needToClear = false;
+         }
+         lastRawLineUsed[i] = line;
+         let words = line.trim().split(/\s+/);
+         const lastWords = words.splice(-4);
+         const remainder = words.join(" ");
+         if ( needToClear && i === lines.length - 1) {
+             lastTimeCleared = Date.now();
+             needToClear = false;
              return <Fragment key={i}>
                  {i > 0 && <br/>}
-                 {remainder}
-                 {lastWords[0] !== undefined ? <span className={"lastchar3"}> {lastWords[0]}</span> : null}
-                 {lastWords[1] !== undefined ? <span className={"lastchar2"}> {lastWords[1]}</span> : null}
-                 {lastWords[2] !== undefined ? <span className={"lastchar1"}> {lastWords[2]}</span> : null}
-                 {lastWords[3] !== undefined ? <span className={"lastchar"}> {lastWords[3]}</span> : null}
-              </Fragment>
-         });
-        }
-        return lines.map((line, i) => {
-        return <Fragment key={i}>
-            {i > 0 && <br/>}
-            {line}
-        </Fragment>
-        });
+                 {line}
+             </Fragment>
+         }
+         return <Fragment key={i}>
+             {i > 0 && <br/>}
+             {remainder}
+             {lastWords[0] !== undefined ? <span className={"lastchar3"}> {lastWords[0]}</span> : null}
+             {lastWords[1] !== undefined ? <span className={"lastchar2"}> {lastWords[1]}</span> : null}
+             {lastWords[2] !== undefined ? <span className={"lastchar1"}> {lastWords[2]}</span> : null}
+             {lastWords[3] !== undefined ? <span className={"lastchar"}> {lastWords[3]}</span> : null}
+          </Fragment>
+     });
+    }
+    return lines.map((line, i) => {
+    return <Fragment key={i}>
+        {i > 0 && <br/>}
+        {line}
+    </Fragment>
+    });
 }
 
 function escapeRegExp(s: string): string {
