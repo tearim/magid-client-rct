@@ -5,12 +5,12 @@ export interface TextSegment {
 
 const DCSTP_PREFIX = 'DCSTP_';
 
-export function hasTypewriterAnimation(text: string): boolean {
+export function hasTimeLineStops(text: string): boolean {
   return text.includes(DCSTP_PREFIX);
 }
 
 export function parseTextSegments(raw: string): TextSegment[] {
-  if (!hasTypewriterAnimation(raw)) {
+  if (!hasTimeLineStops(raw)) {
     return [{ offsetMs: 0, text: raw }];
   }
 

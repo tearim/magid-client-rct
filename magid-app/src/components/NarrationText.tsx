@@ -13,9 +13,8 @@ const NAMED_SPEEDS: Record<string, number> = {
   rapid: 5,
 };
 
-function getConsequentalTypingConfig(className?: string): { typeEachLetter: boolean; typeEachWord: boolean; typeLetterMs: number, animationResets: number } {
-  if (!className) return { typeEachLetter: false, typeEachWord: false,  typeLetterMs: 0, animationResets: 0  };
-
+export function getConsequentalTypingConfig(className?: string): { typeEachLetter: boolean; typeEachWord: boolean; typeElementMs: number, animationResets: number } {
+  if (!className) return { typeEachLetter: false, typeEachWord: false,  typeElementMs: 0, animationResets: 0  };
   const match = className.match(/\btype-by-letter-(\S+)/);
   const wordMatch= className.match(/\btype-by-word-(\S+)/);
   const resetsMatch = className.match(/\banimation-resets-(\S+)/);
@@ -24,23 +23,23 @@ function getConsequentalTypingConfig(className?: string): { typeEachLetter: bool
     resets = parseInt(resetsMatch[1], 10);
   }
 
-  if (!match && !wordMatch) return { typeEachLetter: false, typeEachWord: false, typeLetterMs: 0, animationResets: 0 };
+  if (!match && !wordMatch) return { typeEachLetter: false, typeEachWord: false, typeElementMs: 0, animationResets: 0 };
 
   const workingMatch = match ? match : wordMatch;
-  if ( !workingMatch ) return { typeEachLetter: false, typeEachWord: false,  typeLetterMs: 0, animationResets: resets  };
+  if ( !workingMatch ) return { typeEachLetter: false, typeEachWord: false,  typeElementMs: 0, animationResets: resets  };
   const tEL = match !== null  ;
   const tEW = wordMatch !== null;
   const value = workingMatch[1];
   if (value in NAMED_SPEEDS) {
-    return { typeEachLetter: tEL, typeEachWord: tEW, typeLetterMs: NAMED_SPEEDS[value], animationResets: resets  };
+    return { typeEachLetter: tEL, typeEachWord: tEW, typeElementMs: NAMED_SPEEDS[value], animationResets: resets  };
   }
 
   const parsed = parseInt(value, 10);
   if (Number.isFinite(parsed) && parsed > 0) {
-    return { typeEachLetter: tEL, typeEachWord: tEW, typeLetterMs: parsed, animationResets: resets  };
+    return { typeEachLetter: tEL, typeEachWord: tEW, typeElementMs: parsed, animationResets: resets  };
   }
 
-  return { typeEachLetter: false, typeEachWord: false, typeLetterMs: 0, animationResets: 0  };
+  return { typeEachLetter: false, typeEachWord: false, typeElementMs: 0, animationResets: 0  };
 }
 
 interface Props {
@@ -103,7 +102,6 @@ export function NarrationText({ data, onComplete }: Props) {
   if ( consequentalTypingConfig.typeEachWord ) {
     typingStyle = TypingStyle.byWord;
   }
-
   return (
       <div className={classes} style={style}>
         {renderWithBreaks(displayed, typingStyle, consequentalTypingConfig.animationResets)}

@@ -9,6 +9,7 @@ import { prefs, PREF_KEYS } from '../prefs/prefHelper';
 import { useMagidCommand } from '../hooks/useMagidCommand';
 import { useMagidStore } from '../store/magidStore';
 import { renderTextWithAnchors } from '../lib/renderText';
+import {getConsequentalTypingConfig} from "./NarrationText.tsx";
 
 interface Props {
   data: MenuResponse;
@@ -22,7 +23,8 @@ export function MenuScene({ data }: Props) {
   const volume = isNaN(storedVolume) ? 0.8 : storedVolume;
   const skipTimelines = prefs.getBoolean(PREF_KEYS.NARRATION_IGNORE_TEXT_TL);
   const rawDesc = data['menu-description'] ?? '';
-  const displayed = useTypewriter(rawDesc, skipTimelines);
+  const consequentalTypingConfig = getConsequentalTypingConfig(data['menu-class']);
+  const displayed = useTypewriter(rawDesc, skipTimelines, consequentalTypingConfig);
   const typingComplete = displayed === rawDesc;
 
   const detachedElements = data['detached-elements'] ?? [];

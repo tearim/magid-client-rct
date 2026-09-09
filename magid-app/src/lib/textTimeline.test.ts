@@ -1,12 +1,12 @@
 import { describe, it, expect } from 'vitest';
-import { hasTypewriterAnimation, parseTextSegments } from './textTimeline';
+import { hasTimeLineStops, parseTextSegments } from './textTimeline';
 
 describe('hasTypewriterAnimation', () => {
   it('returns true when DCSTP_ is present', () => {
-    expect(hasTypewriterAnimation('DCSTP_0@Hello')).toBe(true);
+    expect(hasTimeLineStops('DCSTP_0@Hello')).toBe(true);
   });
   it('returns false for plain text', () => {
-    expect(hasTypewriterAnimation('Hello world')).toBe(false);
+    expect(hasTimeLineStops('Hello world')).toBe(false);
   });
 });
 

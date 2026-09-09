@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
-import { hasTypewriterAnimation, parseTextSegments } from '../lib/textTimeline';
+import { hasTimeLineStops, parseTextSegments } from '../lib/textTimeline';
 
 interface TypewriterOptions {
   typeEachLetter?: boolean;
   typeEachWord?: boolean;
-  typeLetterMs?: number;
+  typeElementMs?: number;
   animationResets?: number;
 }
 
@@ -12,10 +12,10 @@ export function useTypewriter(raw: string, skip: boolean, options?: TypewriterOp
   const [displayed, setDisplayed] = useState('');
   const typeEachLetter = options?.typeEachLetter === true;
   const typeEachWord = options?.typeEachWord === true;
-  const typeElementMs = Number.isFinite(options?.typeLetterMs) ? Number(options?.typeLetterMs) : 0;
+  const typeElementMs = Number.isFinite(options?.typeElementMs) ? Number(options?.typeElementMs) : 0;
 
   useEffect(() => {
-    if (!typeEachLetter && ( skip || !hasTypewriterAnimation(raw) )) {
+    if ((!typeEachLetter && !typeEachWord ) && ( skip || !hasTimeLineStops(raw) )) {
       setDisplayed(raw);
       return;
     }
@@ -38,6 +38,7 @@ export function useTypewriter(raw: string, skip: boolean, options?: TypewriterOp
         lastSegDelayMs += seg.text.length * typeElementMs;
         cleanPrefix += seg.text;
       } else if (typeEachWord) {
+
         const prefix = cleanPrefix;
         accumulatedDelayMs = seg.offsetMs + lastSegDelayMs;
         const presplitted=  seg.text.split(' ');
@@ -54,7 +55,6 @@ export function useTypewriter(raw: string, skip: boolean, options?: TypewriterOp
         }, seg.offsetMs);
         timers.push(t);
       }
-
       accumulatedOffset += seg.text.length;
     }
 
@@ -74,7 +74,7 @@ export function useTypewriter(raw: string, skip: boolean, options?: TypewriterOp
 
   // For non-animated text bypass state entirely — avoids a blank first render
   // because useEffect runs after paint, not during.
-  if (!typeEachLetter && ( skip || !hasTypewriterAnimation(raw) )) return raw;
+  if ((!typeEachLetter && !typeEachWord )  && ( skip || !hasTimeLineStops(raw) )) return raw;
   // When animation is complete, never return raw markers — displayed is already clean.
   return displayed;
 }

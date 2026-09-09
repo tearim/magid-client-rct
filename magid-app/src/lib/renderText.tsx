@@ -50,6 +50,7 @@ export function renderWithBreaks(text: string, typingStyle?: TypingStyle, animat
         });
     }
     if (typingStyle === TypingStyle.byWord) {
+
       return lines.map((line, i) => {
          if ( lastRawLineUsed && lastRawLineUsed[i] === line && i === lines.length - 1) {
              needToClear = false;
@@ -99,10 +100,11 @@ export function renderTextWithAnchors(text: string, anchors: Record<string, Reac
 
   const pattern = new RegExp(`(${keys.map(escapeRegExp).join('|')})`, 'g');
   const parts = text.split(pattern);
-
   return parts.map((part, i) => (
     <Fragment key={i}>
-      {Object.prototype.hasOwnProperty.call(anchors, part) ? anchors[part] : renderWithBreaks(part)}
+      {Object.prototype.hasOwnProperty.call(anchors, part)
+          ? anchors[part]
+          : renderWithBreaks(part)}
     </Fragment>
   ));
 }
