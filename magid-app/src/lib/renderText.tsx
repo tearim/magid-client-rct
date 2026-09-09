@@ -1,32 +1,66 @@
-import { Fragment } from 'react';
+import {Fragment,  useRef} from 'react';
 import type { ReactNode } from 'react';
 
 export const TypingStyle = {
     byLetter: 'byLetter',
-    byWord: 'byWord'
+    byWord: 'byWord',
 } as const;
 type TypingStyle = keyof typeof TypingStyle;
 
-export function renderWithBreaks(text: string, typingStyle?: TypingStyle  ): ReactNode {
-      const lines = text.split(/\r?\n/);
-      if ( typingStyle === TypingStyle.byLetter) {
-
-          return lines.map((line, i) => (
-              <Fragment key={i}>
-                  {i > 0 && <br/>}
-                  {line.substring(0, line.length - 4)}
-                  <span className={"lastchar3"}>{line.substring(line.length - 4, line.length - 3)}</span>
-                  <span className={"lastchar2"}>{line.substring(line.length - 3, line.length - 2)}</span>
-                  <span className={"lastchar1"}>{line.substring(line.length - 2, line.length - 1)}</span>
-                  <span className={"lastchar"}>{line.substring(line.length - 1, line.length)}</span>
-              </Fragment>
-          ));
-      }
-      if (typingStyle === TypingStyle.byWord) {
+export function renderWithBreaks(text: string, typingStyle?: TypingStyle, animationResets:number = 0  ): ReactNode {
+        const lines = text.split(/\r?\n/);
+        const lastTimeCleared = useRef(Date.now());
+        const lastRawLineUsed  = useRef(new Array<string>());
+        let needToClear = false;
+        if ( animationResets > 0) {
+            if (Date.now() > lastTimeCleared.current + animationResets) {
+                needToClear = true;
+                lastTimeCleared.current = Date.now();
+            }
+        }
+        if ( typingStyle === TypingStyle.byLetter) {
+            return lines.map((line, i) => {
+                if (animationResets > 0) {
+                    if (lastRawLineUsed.current && lastRawLineUsed.current[i] === line && i === lines.length - 1) {
+                        needToClear = false;
+                    }
+                    lastRawLineUsed.current[i] = line;
+                    if (needToClear && i === lines.length - 1) {
+                        lastTimeCleared.current = Date.now();
+                        needToClear = false;
+                        return <Fragment key={i}>
+                            {i > 0 && <br/>}
+                            {line}
+                        </Fragment>
+                    }
+                }
+                return <Fragment key={i}>
+                    {i > 0 && <br/>}
+                    {line.substring(0, line.length - 4)}
+                    <span className={"lastchar3"}>{line.substring(line.length - 4, line.length - 3)}</span>
+                    <span className={"lastchar2"}>{line.substring(line.length - 3, line.length - 2)}</span>
+                    <span className={"lastchar1"}>{line.substring(line.length - 2, line.length - 1)}</span>
+                    <span className={"lastchar"}>{line.substring(line.length - 1, line.length)}</span>
+                </Fragment>
+            });
+        }
+        if (typingStyle === TypingStyle.byWord) {
           return lines.map((line, i) => {
+             if ( lastRawLineUsed.current && lastRawLineUsed.current[i] === line && i === lines.length - 1) {
+                 needToClear = false;
+             }
+             lastRawLineUsed.current[i] = line;
              let words = line.trim().split(/\s+/);
              const lastWords = words.splice(-4);
              const remainder = words.join(" ");
+             if ( needToClear && i === lines.length - 1) {
+                 lastTimeCleared.current = Date.now();
+                 needToClear = false;
+                 return <Fragment key={i}>
+                     {i > 0 && <br/>}
+                     {line}
+                 </Fragment>
+             }
              return <Fragment key={i}>
                  {i > 0 && <br/>}
                  {remainder}
@@ -36,13 +70,13 @@ export function renderWithBreaks(text: string, typingStyle?: TypingStyle  ): Rea
                  {lastWords[3] !== undefined ? <span className={"lastchar"}> {lastWords[3]}</span> : null}
               </Fragment>
          });
-      }
-      return lines.map((line, i) => {
+        }
+        return lines.map((line, i) => {
         return <Fragment key={i}>
             {i > 0 && <br/>}
             {line}
         </Fragment>
-      });
+        });
 }
 
 function escapeRegExp(s: string): string {

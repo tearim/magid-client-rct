@@ -5,6 +5,7 @@ interface TypewriterOptions {
   typeEachLetter?: boolean;
   typeEachWord?: boolean;
   typeLetterMs?: number;
+  animationResets?: number;
 }
 
 export function useTypewriter(raw: string, skip: boolean, options?: TypewriterOptions): string {

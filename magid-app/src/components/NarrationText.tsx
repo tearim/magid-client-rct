@@ -13,29 +13,34 @@ const NAMED_SPEEDS: Record<string, number> = {
   rapid: 5,
 };
 
-function getConsequentalTypingConfig(className?: string): { typeEachLetter: boolean; typeEachWord: boolean; typeLetterMs: number } {
-  if (!className) return { typeEachLetter: false, typeEachWord: false,  typeLetterMs: 0 };
+function getConsequentalTypingConfig(className?: string): { typeEachLetter: boolean; typeEachWord: boolean; typeLetterMs: number, animationResets: number } {
+  if (!className) return { typeEachLetter: false, typeEachWord: false,  typeLetterMs: 0, animationResets: 0  };
 
   const match = className.match(/\btype-by-letter-(\S+)/);
   const wordMatch= className.match(/\btype-by-word-(\S+)/);
+  const resetsMatch = className.match(/\banimation-resets-(\S+)/);
+  let resets = 0;
+  if (resetsMatch) {
+    resets = parseInt(resetsMatch[1], 10);
+  }
 
-  if (!match && !wordMatch) return { typeEachLetter: false, typeEachWord: false, typeLetterMs: 0 };
+  if (!match && !wordMatch) return { typeEachLetter: false, typeEachWord: false, typeLetterMs: 0, animationResets: 0 };
 
   const workingMatch = match ? match : wordMatch;
-  if ( !workingMatch ) return { typeEachLetter: false, typeEachWord: false,  typeLetterMs: 0 };
+  if ( !workingMatch ) return { typeEachLetter: false, typeEachWord: false,  typeLetterMs: 0, animationResets: resets  };
   const tEL = match !== null  ;
   const tEW = wordMatch !== null;
   const value = workingMatch[1];
   if (value in NAMED_SPEEDS) {
-    return { typeEachLetter: tEL, typeEachWord: tEW, typeLetterMs: NAMED_SPEEDS[value] };
+    return { typeEachLetter: tEL, typeEachWord: tEW, typeLetterMs: NAMED_SPEEDS[value], animationResets: resets  };
   }
 
   const parsed = parseInt(value, 10);
   if (Number.isFinite(parsed) && parsed > 0) {
-    return { typeEachLetter: tEL, typeEachWord: tEW, typeLetterMs: parsed };
+    return { typeEachLetter: tEL, typeEachWord: tEW, typeLetterMs: parsed, animationResets: resets  };
   }
 
-  return { typeEachLetter: false, typeEachWord: false, typeLetterMs: 0 };
+  return { typeEachLetter: false, typeEachWord: false, typeLetterMs: 0, animationResets: 0  };
 }
 
 interface Props {
@@ -92,16 +97,16 @@ export function NarrationText({ data, onComplete }: Props) {
   const style = data.css ? parseMagidCss(data.css) : undefined;
 
   let typingStyle = undefined;
-  if ( data.class?.includes?.('type-by-letter') ) {
+  if ( consequentalTypingConfig.typeEachLetter ) {
     typingStyle = TypingStyle.byLetter;
   }
-  if ( data.class?.includes('type-by-word') ) {
+  if ( consequentalTypingConfig.typeEachWord ) {
     typingStyle = TypingStyle.byWord;
   }
 
   return (
       <div className={classes} style={style}>
-        {renderWithBreaks(displayed, typingStyle)}
+        {renderWithBreaks(displayed, typingStyle, consequentalTypingConfig.animationResets)}
       </div>
   );
 }
