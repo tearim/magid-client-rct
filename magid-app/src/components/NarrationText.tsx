@@ -99,8 +99,14 @@ export function NarrationText({ data, onComplete }: Props) {
   if ( consequentalTypingConfig.typeEachLetter ) {
     typingStyle = TypingStyle.byLetter;
   }
+  if ( consequentalTypingConfig.typeEachLetter && data.class?.includes(("animate-independent") ) ) {
+    typingStyle = TypingStyle.byLetterIsolating;
+  }
   if ( consequentalTypingConfig.typeEachWord ) {
     typingStyle = TypingStyle.byWord;
+  }
+  if ( consequentalTypingConfig.typeEachWord && data.class?.includes(("animate-independent") ) ) {
+    typingStyle = TypingStyle.byWordIsolating;
   }
   return (
       <div className={classes} style={style}>

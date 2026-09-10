@@ -3,7 +3,9 @@ import type { ReactNode } from 'react';
 
 export const TypingStyle = {
     byLetter: 'byLetter',
+    byLetterIsolating: 'byLetterIsolating',
     byWord: 'byWord',
+    byWordIsolating: 'byWordIsolating'
 } as const;
 type TypingStyle = keyof typeof TypingStyle;
 
@@ -23,7 +25,22 @@ export function renderWithBreaks(text: string, typingStyle?: TypingStyle, animat
             lastTimeCleared = Date.now();
         }
     }
-    if ( typingStyle === TypingStyle.byLetter) {
+    if ( typingStyle === TypingStyle.byLetterIsolating ) {
+        return lines.map((line, i) => {
+            const words = line.split(/\s/);
+            return <Fragment key={i}>
+                {i > 0 && <br/>}
+                {words.map((word, _) => {
+                    let result = [];
+                    for ( let j = 0; j < word.length; j++) {
+                        result.push(<span key={j} className={"animated"}>{word[j]}</span>)
+                    }
+                    return <span className={"word-joiner"}>{result} </span>
+                })}
+            </Fragment>
+        });
+    }
+    if ( typingStyle === TypingStyle.byLetter ) {
         return lines.map((line, i) => {
             if (animationResets > 0) {
                 if (lastRawLineUsed && lastRawLineUsed[i] === line && i === lines.length - 1) {
@@ -49,7 +66,7 @@ export function renderWithBreaks(text: string, typingStyle?: TypingStyle, animat
             </Fragment>
         });
     }
-    if (typingStyle === TypingStyle.byWord) {
+    if (typingStyle === TypingStyle.byWord || typingStyle === TypingStyle.byWordIsolating ) {
 
       return lines.map((line, i) => {
          if ( lastRawLineUsed && lastRawLineUsed[i] === line && i === lines.length - 1) {
@@ -57,6 +74,11 @@ export function renderWithBreaks(text: string, typingStyle?: TypingStyle, animat
          }
          lastRawLineUsed[i] = line;
          let words = line.trim().split(/\s+/);
+         if ( typingStyle === TypingStyle.byWordIsolating ) {
+             return <Fragment key={i}>
+                 {words.map((word, j) => <span key={j} className={"animated"}>{word} </span>)}
+             </Fragment>
+         }
          const lastWords = words.splice(-4);
          const remainder = words.join(" ");
          if ( needToClear && i === lines.length - 1) {
