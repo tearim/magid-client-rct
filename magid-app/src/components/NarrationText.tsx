@@ -5,6 +5,7 @@ import { prefs, PREF_KEYS } from '../prefs/prefHelper';
 import { parseMagidCss } from '../lib/magidCss';
 import { renderWithBreaks, TypingStyle } from '../lib/renderText';
 import { resolveCleanText } from '../lib/textTimeline';
+import {useMagidStore} from "../store/magidStore.ts";
 
 const NAMED_SPEEDS: Record<string, number> = {
   slow: 30,
@@ -22,7 +23,7 @@ export function getConsequentalTypingConfig(className?: string): { typeEachLette
   if (resetsMatch) {
     resets = parseInt(resetsMatch[1], 10);
   }
-
+ //console.log('class:' + className)
   if (!match && !wordMatch) return { typeEachLetter: false, typeEachWord: false, typeElementMs: 0, animationResets: 0 };
 
   const workingMatch = match ? match : wordMatch;
@@ -47,6 +48,8 @@ interface Props {
   onComplete?: () => void;
 }
 
+let impliedClassesOf: Record<string, string>[] = [];
+
 export function NarrationText({ data, onComplete }: Props) {
   const rawText = data.narration ?? data.text ?? '';
   const deferMs = data.defer ? parseInt(data.defer, 10) : 0;
@@ -54,6 +57,10 @@ export function NarrationText({ data, onComplete }: Props) {
   const [visible, setVisible] = useState(normalizedDeferMs === 0);
   const [skipTimelines, setSkipTimelines] = useState(false);
   const completionReportedRef = useRef(false);
+
+  if ( impliedClassesOf.length === 0 ) {
+    impliedClassesOf.push(useMagidStore.getState().getVarsPrefixed("implied-classes-of:"))
+  }
 
   useEffect(() => {
     setSkipTimelines(prefs.getBoolean(PREF_KEYS.NARRATION_IGNORE_TEXT_TL));
@@ -77,6 +84,35 @@ export function NarrationText({ data, onComplete }: Props) {
     return () => window.removeEventListener('keydown', handler);
   }, []);
 
+
+  for ( const implied of impliedClassesOf ) {
+    for (const [key, value] of Object.entries(implied)) {
+      if (key !== undefined && data.class !== undefined) {
+        const keys = key.split(":")[1].split(",");
+        for ( let keyString of keys) {
+          keyString = keyString.trim();
+          if ( keyString.startsWith("*") && keyString.endsWith("*") && data.class.includes(keyString.slice(1, -1))) {
+            data.class += " " + value;
+            continue;
+          }
+          if ( keyString.startsWith("*") && data.class.endsWith(keyString.slice(1))) {
+            data.class += " " + value;
+            continue;
+          }
+          if ( keyString.endsWith("*") && data.class.startsWith(keyString.slice(0, -1))) {
+            data.class += " " + value;
+            continue;
+          }
+          if ( keyString.includes(data.class)) {
+            data.class += " " + value;
+          }
+        }
+
+      }
+    }
+  }
+
+
   const consequentalTypingConfig = getConsequentalTypingConfig(data.class);
   const displayed = useTypewriter(rawText, skipTimelines, consequentalTypingConfig);
   const cleanText = resolveCleanText(rawText);
@@ -95,6 +131,7 @@ export function NarrationText({ data, onComplete }: Props) {
   const classes = ['magid-default-narration', data.class].filter(Boolean).join(' ');
   const style = data.css ? parseMagidCss(data.css) : undefined;
 
+
   let typingStyle = undefined;
   if ( consequentalTypingConfig.typeEachLetter ) {
     typingStyle = TypingStyle.byLetter;
@@ -108,6 +145,8 @@ export function NarrationText({ data, onComplete }: Props) {
   if ( consequentalTypingConfig.typeEachWord && data.class?.includes(("animate-independent") ) ) {
     typingStyle = TypingStyle.byWordIsolating;
   }
+
+
   return (
       <div className={classes} style={style}>
         {renderWithBreaks(displayed, typingStyle, consequentalTypingConfig.animationResets)}

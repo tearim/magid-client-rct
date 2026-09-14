@@ -44,7 +44,7 @@ export function useTypewriter(raw: string, skip: boolean, options?: TypewriterOp
         const presplitted=  seg.text.split(' ');
         for (let i = 0; i < presplitted.length; i++) {
            timers.push(setTimeout(() => {
-             setDisplayed(prefix + presplitted.slice(0, i+1).join(' ') );
+             setDisplayed(prefix + presplitted.slice(0, i+1).join(' ')  );
            }, accumulatedDelayMs + i * typeElementMs));
         }
         lastSegDelayMs += presplitted.length * typeElementMs;

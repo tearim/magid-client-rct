@@ -36,7 +36,7 @@ export function renderWithBreaks(text: string, typingStyle?: TypingStyle, animat
                         result.push(<span key={j} className={"animated"}>{word[j]}</span>)
                     }
                     return <span className={"word-joiner"}>{result} </span>
-                })}
+                })}<br/>
             </Fragment>
         });
     }
@@ -76,6 +76,7 @@ export function renderWithBreaks(text: string, typingStyle?: TypingStyle, animat
          let words = line.trim().split(/\s+/);
          if ( typingStyle === TypingStyle.byWordIsolating ) {
              return <Fragment key={i}>
+                 {i > 0 && <br/>}
                  {words.map((word, j) => <span key={j} className={"animated"}>{word} </span>)}
              </Fragment>
          }
@@ -86,7 +87,7 @@ export function renderWithBreaks(text: string, typingStyle?: TypingStyle, animat
              needToClear = false;
              return <Fragment key={i}>
                  {i > 0 && <br/>}
-                 {line}
+                 {line}<br/>
              </Fragment>
          }
          return <Fragment key={i}>

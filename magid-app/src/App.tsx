@@ -18,6 +18,7 @@ export default function App() {
   const debugAlwaysAllowConnectivity = prefs.getBoolean(PREF_KEYS.DEBUG_ALWAYS_ALLOW_CONNECTIVITY);
   const connectDisabled = !!connectivityBlockedError && !debugAlwaysAllowConnectivity;
 
+
   const [showOptions, setShowOptions]        = useState(false);
   const [showStats, setShowStats]            = useState(false);
   const [focusOnUrl, setFocusOnUrl]          = useState(false);

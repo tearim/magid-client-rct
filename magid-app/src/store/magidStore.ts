@@ -45,6 +45,7 @@ interface MagidState {
   clearCssFiles: () => void;
   setVar: (name: string, value: string) => void;
   getVar: (name: string) => string | undefined;
+  getVarsPrefixed: (prefix: string) => Record<string, string>;
   setUserInput: (name: string, value: string) => void;
   isVar: (name: string, expected: string) => boolean;
   commandRequiresCssReloading: (cmd: string) => boolean;
@@ -377,6 +378,17 @@ export const useMagidStore = create<MagidState>((set, get) => ({
   },
 
   getVar: (name) => get().envVars[name],
+
+  getVarsPrefixed: (prefix) => {
+    const vars = get().envVars;
+    const result:Record<string, string> = {};
+    for (const key in vars) {
+      if (key.startsWith(prefix)) {
+        result[key] = vars[key];
+      }
+    }
+    return result;
+  },
 
   isVar: (name, expected) => get().envVars[name] === expected,
 
