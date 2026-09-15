@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Quick Sigma.js Example</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/sigma.js/2.4.0/sigma.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/graphology/0.25.4/graphology.umd.min.js"></script>
+  </head>
+  <body style="background: lightgrey">
+
+    <div style="display:none" id="initial-json">
+{"oasis.xml":{"init":{"initial":true,"choices":{},"actions":{"on-entry":{"jumps":["travel"]}}},"travel":{"choices":{"n@Go North":{"action":"north"},"w@Go West":{"action":"west"},"s@Go South":{"action":"south"},"e@Go East":{"action":"east"}},"actions":{"east":{"jumps":["perform_move"]},"south":{"jumps":["perform_move"]},"north":{"jumps":["perform_move"]},"west":{"jumps":["perform_move"]},"on-entry":{"jumps":["hermit","skinner","seer-o-junk"]}}},"perform_move":{"choices":{"leave_encounter":{"action":"leave_encounter"}},"actions":{"leave_encounter":{"jumps":["travel"]},"on-entry":{"jumps":["travel"]}}}},"skinner.xmls":{"last-inn":{"choices":{"hermit@Wait!.. Hermit sent me!":{"action":"hermit"},"struggle@Attempt to free yourself from the trap":{"action":"struggle"},"peace-out@You decide to move back slowly":{"action":"peace-out"},"fire@You try to shoot this man":{"action":"fire"}},"actions":{"peace-out":{"jumps":["leave_encounter@perform_move"]},"on-entry":{"jumps":[]},"fire":{"jumps":["skinner-dying","skinner-killing-you"]},"struggle":{"jumps":["skinner_deal"]},"hermit":{"jumps":["skinner_deal"]}}},"skinner-killing-you":{"choices":{},"actions":{"on-entry":{"jumps":["DIE"]}}},"skinner_deal":{"choices":{"accept@Accept":{"action":"accept"},"decline@Decline":{"action":"decline"}},"actions":{"decline":{"jumps":["DIE"]},"on-entry":{"jumps":[]},"accept":{"jumps":[]}}},"skinner-dying":{"choices":{},"actions":{"on-entry":{"jumps":["leave_encounter@perform_move"]}}}},"last-inn.xmls":{"the-last-inn":{"choices":{},"actions":{}}},"seer-o-junk.xmls":{"seer-about":{"choices":{"a@That makes two of us":{"action":"normal"},"b@I'm on an important mission and you might redeem yourself by helping me":{"action":"jerk"},"c@You're not junk. No person is junk":{"action":"nice"},"d@The war is awful... It has to be stopped...":{"action":"stop-war"}},"actions":{"normal":{"jumps":["seer-o-junk"]},"jerk":{"jumps":["seer-o-junk"]},"on-entry":{"jumps":[]},"stop-war":{"jumps":["seer-o-junk"]},"nice":{"jumps":["seer-about-nice"]}}},"seer-about-nice":{"choices":{"a@I mean it. You are a human being as I am":{"action":"stay-nice"},"b@I'm kidding. I'm on an important mission and you're wasting my time.":{"action":"jerk-plus"}},"actions":{"stay-nice":{"jumps":["seer-o-junk"]},"jerk-plus":{"jumps":["seer-o-junk"]}}},"seer-trade":{"choices":{"a@...I don't need much from you, but you can have some food":{"action":"sell-food-scarce"},"b@...I could sell a weapon for it":{"action":"sell-weapon"},"c@...I could sell some food for it":{"action":"sell-food-little"},"d@...I could sell some food for it":{"action":"sell-food-a-lot"},"e@...I could tell you something important about the Oasis":{"action":"sell-info"},"f@...I could sell a weapon for it. It will have two charges":{"action":"sell-weapon-2"},"z@You reply: I think I'd rather keep my ring... Take care!":{"action":"do-not-sell"}},"actions":{"do-not-sell":{"jumps":["leave@seer-o-junk"]},"sell-food-a-lot":{"jumps":["leave@seer-o-junk"]},"sell-info":{"jumps":["leave@seer-o-junk"]},"on-entry":{"jumps":[]},"sell-weapon-2":{"jumps":["leave@seer-o-junk"]},"sell-food-scarce":{"jumps":["leave@seer-o-junk"]},"sell-weapon":{"jumps":["leave@seer-o-junk"]},"sell-food-little":{"jumps":["leave@seer-o-junk"]}}},"seer-o-junk":{"choices":{"z@What is this place? Who are you?":{"action":"about"},"hermit@The Hermit sent me to collect her stuff...":{"action":"hermit"},".@...before I leave, can I trade with you?":{"action":"seer-trade"},"ask-about-oasis@I am searching for the Oasis... Can you help me?":{"action":"oasis"},"leave@I got it, but I need to leave. Take care!":{"action":"leave"}},"actions":{"oasis":{"jumps":["leave@seer-o-junk"]},"leave":{"jumps":["leave_encounter@perform_move"]},"about":{"jumps":["seer-about"]},"seer-trade":{"jumps":["seer-trade"]},"hermit":{"jumps":[]}}}},"hermit.xmls":{"hermit_dialog_2":{"choices":{"a@Lie: “Indeed you have heard about me. I am a King’s Agent and I’m in pursue of a dangerous fugitive. I know that this coward is fleeing towards the Oasis. How can I get there?”":{"action":"lie"},"b@“I do not know, what do you mean. I am here, because I need to meet a friend in Oasis. Can you just tell me where it is?” ":{"action":"partial"},"c@Tell the truth: “I am from the Duchy of Mirgot, and I have helped to save some lives from the Kingdom. If I fail to reach the Oasis, I will be killed by the agents who hound me” ":{"action":"truth"}},"actions":{"truth":{"jumps":["leave_encounter@perform_move"]},"on-entry":{"jumps":[]},"lie":{"jumps":["leave_encounter@perform_move"]},"partial":{"jumps":["leave_encounter@perform_move"]}}},"hermit":{"choices":{"other-places@Thank you. Are there other places?":{"action":"other_places"},"intro-yourself@Thank you again. And now, please tell me about yourself":{"action":"hermit_2"}},"actions":{"on-entry":{"jumps":[]},"other_places":{"jumps":[]},"hermit_2":{"jumps":["hermit_dialog_2"]}}}}}
+    </div>
+    <div id="container" style="width: 800px; height: 600px; background: white"></div>
+    <script>
+      // Create a graphology graph
+      const graph = new graphology.Graph();
+
+      const jsonText = document.getElementById("initial-json").textContent;
+      const jsonSource = JSON.parse(jsonText);
+
+      let x = 0;
+      let z = 0;
+      for ( let text in jsonSource) {        
+        z++;
+        let y = 0;        
+        for ( let scene in jsonSource[text]) {
+            x++; y++;            
+            graph.addNode(scene, { label: scene, x: x + z / y, y: y + z / x, size: 10, color: "blue" });      
+        }
+        
+      }
+      graph.addNode("DIE", {label: "DIE", x: 5, y: -5, size: 20, color: "black"})
+
+      const addedEdges = [];
+
+      for ( let text in jsonSource) {        
+        for ( let scene in jsonSource[text]) {
+            for ( let action in jsonSource[text][scene]['actions']) 
+            //console.log(text, ">>", scene, "::", action);           
+            for ( let jump in jsonSource[text][scene]['actions'][action]['jumps']) {
+                //console.log(text, ">>", scene, "::", action, ">>", jsonSource[text][scene]['actions'][action]['jumps'][jump]);           
+                const sceneTo = jsonSource[text][scene]['actions'][action]['jumps'][jump].includes('@')
+                            ? jsonSource[text][scene]['actions'][action]['jumps'][jump].split('@')[1]
+                            :jsonSource[text][scene]['actions'][action]['jumps'][jump];             
+                if ( !addedEdges.includes(`${scene}---------------${sceneTo}`) ) {                               
+                    
+                    try {
+                        graph.addEdge(scene, sceneTo, { size: 2, color: "purple", type: "arrow" } )
+                        addedEdges.push(`${scene}---------------${sceneTo}`)
+                    } catch ( e ) {
+                        console.error(e);
+                    }
+                }
+                
+            }
+            
+
+        }        
+      }
+
+
+    //   graph.addNode("1", { label: "Node 1", x: 0, y: 0, size: 10, color: "blue" });
+    //   graph.addNode("2", { label: "Node 2", x: 1, y: 1, size: 20, color: "red" });
+    //   graph.addNode("3", { label: "Node 3", x: 1, y: 5, size: 5, color: "green" });
+    //   graph.addEdge("1", "2", { size: 5, color: "purple" });
+    //   graph.addEdge("1", "3", { size: 2, color: "purple" });
+
+      // Instantiate sigma.js and render the graph
+      const sigmaInstance = new Sigma(graph, document.getElementById("container"));
+    </script>
+  </body>
+</html>
