@@ -43,6 +43,7 @@ interface MagidState {
   sendCommand: (cmd: string) => Promise<void>;
   addCssFile: (url: string) => void;
   clearCssFiles: () => void;
+  resetVars: () => void;
   setVar: (name: string, value: string) => void;
   getVar: (name: string) => string | undefined;
   getVarsPrefixed: (prefix: string) => Record<string, string>;
@@ -94,6 +95,7 @@ function applyConfig(data: ConfigData, get: () => MagidState) {
 
   for (const [k, v] of Object.entries(data)) {
     if (k !== 'css-files' && k !== 'css-files-react' && v !== undefined) {
+    //  console.log(`[magid] applying config: ${k} = ${v}`);
       setVar(k, v);
     }
   }
@@ -388,6 +390,10 @@ export const useMagidStore = create<MagidState>((set, get) => ({
       }
     }
     return result;
+  },
+
+  resetVars: () => {
+    set({ envVars: {} });
   },
 
   isVar: (name, expected) => get().envVars[name] === expected,

@@ -57,6 +57,7 @@ export function NarrationText({ data, onComplete }: Props) {
   const [visible, setVisible] = useState(normalizedDeferMs === 0);
   const [skipTimelines, setSkipTimelines] = useState(false);
   const completionReportedRef = useRef(false);
+  const implicationsApplied = useRef(false);
 
   if ( impliedClassesOf.length === 0 ) {
     impliedClassesOf.push(useMagidStore.getState().getVarsPrefixed("implied-classes-of:"))
@@ -84,30 +85,35 @@ export function NarrationText({ data, onComplete }: Props) {
     return () => window.removeEventListener('keydown', handler);
   }, []);
 
+  if ( !implicationsApplied.current ) {
+    for (const implied of impliedClassesOf) {
+      for (const [key, value] of Object.entries(implied)) {
+        if (key !== undefined && data.class !== undefined) {
+          const keys = key.split(":")[1].split(",");
+          for (let keyString of keys) {
+            keyString = keyString.trim();
+            if (keyString.startsWith("*") && keyString.endsWith("*") && data.class.includes(keyString.slice(1, -1))) {
+              data.class += " " + value;
+              implicationsApplied.current = true;
+              continue;
+            }
+            if (keyString.startsWith("*") && data.class.endsWith(keyString.slice(1))) {
+              data.class += " " + value;
+              implicationsApplied.current = true;
+              continue;
+            }
+            if (keyString.endsWith("*") && data.class.startsWith(keyString.slice(0, -1))) {
+              data.class += " " + value;
+              implicationsApplied.current = true;
+              continue;
+            }
+            if (keyString.includes(data.class)) {
+              data.class += " " + value;
+              implicationsApplied.current = true;
+            }
+          }
 
-  for ( const implied of impliedClassesOf ) {
-    for (const [key, value] of Object.entries(implied)) {
-      if (key !== undefined && data.class !== undefined) {
-        const keys = key.split(":")[1].split(",");
-        for ( let keyString of keys) {
-          keyString = keyString.trim();
-          if ( keyString.startsWith("*") && keyString.endsWith("*") && data.class.includes(keyString.slice(1, -1))) {
-            data.class += " " + value;
-            continue;
-          }
-          if ( keyString.startsWith("*") && data.class.endsWith(keyString.slice(1))) {
-            data.class += " " + value;
-            continue;
-          }
-          if ( keyString.endsWith("*") && data.class.startsWith(keyString.slice(0, -1))) {
-            data.class += " " + value;
-            continue;
-          }
-          if ( keyString.includes(data.class)) {
-            data.class += " " + value;
-          }
         }
-
       }
     }
   }

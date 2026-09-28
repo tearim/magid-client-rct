@@ -77,6 +77,7 @@ export default function App() {
   const handleResetServer = async () => {
     await sendCommand('reload-xml');
     await sendCommand('');
+    //useMagidStore.getState().resetVars();
   };
 
   const handleBaseUrlChange = (url: string) => {
