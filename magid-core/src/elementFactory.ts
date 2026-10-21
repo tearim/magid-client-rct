@@ -1,4 +1,4 @@
-import { resolveAnchors } from '../api/magidClient';
+import { resolveAnchors } from './anchors';
 import type {
   MenuResponse,
   NarrationResponse,
@@ -7,7 +7,7 @@ import type {
   VisualResponse,
   SessionResponse,
   DetachedElementResponse,
-} from '../types/protocol';
+} from './protocol';
 
 export type ParsedElement =
   | { type: 'menu'; data: MenuResponse }

@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
-import type { CommandResponse } from '../types/protocol';
+import { parseMagidCss, type CommandResponse } from '@magid/client-core';
 import { useMagidStore } from '../store/magidStore';
-import { parseMagidCss } from '../lib/magidCss';
 import { useImpliedClasses } from '../hooks/useImpliedClasses';
 
 interface Props {

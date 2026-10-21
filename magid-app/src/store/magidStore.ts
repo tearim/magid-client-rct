@@ -1,9 +1,10 @@
 import { create } from 'zustand';
-import { parseResponse, type ParsedElement } from '../lib/elementFactory';
 import { injectStyleLink, clearInjectedStylesheets } from '../lib/cssUtils';
 import { sendCommand as apiSendCommand, endSession as apiEndSession, getXmlList as apiGetXmlList } from '../api/magidClient';
-import type { ConfigData, DetachedElementResponse, ServerErrorPayload, XmlEntry } from '../types/protocol';
-import { ERROR_CODES, isConnectivityBlockingCode } from '../types/errorCodes';
+import {
+  ERROR_CODES, isConnectivityBlockingCode, parseResponse,
+  type ConfigData, type DetachedElementResponse, type ParsedElement, type ServerErrorPayload, type XmlEntry,
+} from '@magid/client-core';
 import { prefs, PREF_KEYS } from '../prefs/prefHelper';
 
 export interface Toast {

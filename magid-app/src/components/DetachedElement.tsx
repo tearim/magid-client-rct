@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import type { DetachedElementResponse } from '../types/protocol';
+import type { DetachedElementResponse } from '@magid/client-core';
 import { InputElement } from './InputElement';
 
 interface Props {

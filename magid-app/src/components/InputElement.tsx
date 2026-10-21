@@ -1,8 +1,7 @@
 import {type CSSProperties, type ReactNode, useEffect, useRef} from 'react';
 import { useId } from 'react';
-import type { DetachedElementResponse } from '../types/protocol';
+import { parseMagidCss, type DetachedElementResponse } from '@magid/client-core';
 import { useMagidStore } from '../store/magidStore';
-import { parseMagidCss } from '../lib/magidCss';
 import {useDebounce} from "../hooks/useDebounce.ts";
 import { useImpliedClasses } from '../hooks/useImpliedClasses';
 

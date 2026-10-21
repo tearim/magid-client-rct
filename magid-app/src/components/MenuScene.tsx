@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import type { ReactNode } from 'react';
-import type { MenuResponse } from '../types/protocol';
+import { getConsequentalTypingConfig, type MenuResponse } from '@magid/client-core';
 import { CommandButton } from './CommandButton';
 import { DetachedElement } from './DetachedElement';
 import { useAudio } from '../hooks/useAudio';
@@ -9,7 +9,6 @@ import { prefs, PREF_KEYS } from '../prefs/prefHelper';
 import { useMagidCommand } from '../hooks/useMagidCommand';
 import { useMagidStore } from '../store/magidStore';
 import { renderTextWithAnchors } from '../lib/renderText';
-import {getConsequentalTypingConfig} from "./NarrationText.tsx";
 import { useImpliedClasses } from '../hooks/useImpliedClasses';
 
 interface Props {

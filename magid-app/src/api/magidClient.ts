@@ -1,4 +1,4 @@
-import type { XmlEntry, ServerStatus, ServerStats } from '../types/protocol';
+import { resolveAnchors, resolveInObject, type XmlEntry, type ServerStatus, type ServerStats } from '@magid/client-core';
 
 // Matches Java's String.hashCode() so we can identify our session row by uid-hash.
 export function javaHashCode(str: string): number {
@@ -7,26 +7,6 @@ export function javaHashCode(str: string): number {
     h = (Math.imul(31, h) + str.charCodeAt(i)) | 0;
   }
   return h;
-}
-
-export const MAGID_ANCHOR = 'magid://';
-
-export function resolveAnchors(text: string, baseUrl: string): string {
-  //const base = baseUrl; //baseUrl.endsWith('/') ? baseUrl : baseUrl + '/';
-  return text.replaceAll(MAGID_ANCHOR, baseUrl);
-}
-
-function resolveInObject(obj: unknown, baseUrl: string): unknown {
-  if (typeof obj === 'string') return resolveAnchors(obj, baseUrl);
-  if (Array.isArray(obj)) return obj.map((item) => resolveInObject(item, baseUrl));
-  if (obj !== null && typeof obj === 'object') {
-    const result: Record<string, unknown> = {};
-    for (const [k, v] of Object.entries(obj as Record<string, unknown>)) {
-      result[k] = resolveInObject(v, baseUrl);
-    }
-    return result;
-  }
-  return obj;
 }
 
 export async function sendCommand(

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { ParsedElement } from '../lib/elementFactory';
+import type { ParsedElement } from '@magid/client-core';
 import { MenuScene } from './MenuScene';
 import { NarrationText } from './NarrationText';
 import { CommandButton } from './CommandButton';

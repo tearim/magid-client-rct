@@ -1,9 +1,10 @@
-import type { CSSProperties } from 'react';
-
 const POSITIONAL = new Set(['left', 'right', 'top', 'bottom']);
 const UNIT_LESS = /^-?\d+(\.\d+)?$/;
 
-export function parseMagidCss(raw: string): CSSProperties {
+// Inline style object with camelCased keys: usable as a React `style` prop or via Object.assign(el.style, …).
+export type MagidStyle = Record<string, string>;
+
+export function parseMagidCss(raw: string): MagidStyle {
   const style: Record<string, string> = {};
   let needsAbsolute = false;
 
@@ -30,5 +31,5 @@ export function parseMagidCss(raw: string): CSSProperties {
 
   if (needsAbsolute) style.position = 'absolute';
 
-  return style as CSSProperties;
+  return style;
 }

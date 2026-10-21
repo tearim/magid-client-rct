@@ -1,0 +1,15 @@
+{
+  "name": "magid-client-rct",
+  "private": true,
+  "workspaces": [
+    "magid-core",
+    "magid-app"
+  ],
+  "scripts": {
+    "dev": "npm run dev -w magid-app",
+    "build": "npm run build -w magid-app",
+    "test": "npm run test --workspaces",
+    "lint": "npm run lint --workspaces",
+    "typecheck": "npm run typecheck -w @magid/client-core && npx -w magid-app tsc -b"
+  }
+}
