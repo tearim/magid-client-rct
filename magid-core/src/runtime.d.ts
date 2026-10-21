@@ -10,3 +10,7 @@ declare class URL {
   readonly searchParams: URLSearchParams;
   toString(): string;
 }
+
+declare const console: {
+  warn(...args: unknown[]): void;
+};

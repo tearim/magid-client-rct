@@ -8,3 +8,5 @@ export * from './typingConfig';
 export * from './impliedClasses';
 export * from './magidCss';
 export * from './transport';
+export * from './storage';
+export * from './client';
