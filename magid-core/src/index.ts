@@ -7,3 +7,4 @@ export * from './textTimeline';
 export * from './typingConfig';
 export * from './impliedClasses';
 export * from './magidCss';
+export * from './transport';
