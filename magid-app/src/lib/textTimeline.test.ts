@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { hasTimeLineStops, parseTextSegments } from './textTimeline';
 
-describe('hasTypewriterAnimation', () => {
+describe('hasTimeLineStops', () => {
   it('returns true when DCSTP_ is present', () => {
     expect(hasTimeLineStops('DCSTP_0@Hello')).toBe(true);
   });

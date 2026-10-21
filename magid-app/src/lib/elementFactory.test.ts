@@ -71,7 +71,7 @@ describe('parseResponse', () => {
 
   it('parses a config with css-files', () => {
     const input = {
-      config: { 'css-files': 'magid://styles/main.css' },
+      config: { 'css-files': 'magid:///styles/main.css' },
     };
     const result = parseResponse(input, BASE);
     expect(result).toHaveLength(1);
@@ -121,7 +121,7 @@ describe('parseResponse', () => {
   it('resolves magid:// anchors in string values', () => {
     const input = {
       menu: 'test',
-      'menu-background-music': 'magid://audio/theme.mp3',
+      'menu-background-music': 'magid:///audio/theme.mp3',
     };
     const result = parseResponse(input, BASE);
     expect(result[0].type).toBe('menu');
