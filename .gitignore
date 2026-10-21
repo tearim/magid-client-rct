@@ -1,0 +1,3 @@
+# Machine-local Claude Code settings
+.claude/settings.local.json
+node_modules
