@@ -262,9 +262,8 @@ export const useMagidStore = create<MagidState>((set, get) => ({
 
     if (get().commandRequiresCssReloading(cmd)) {
       get().clearCssFiles();
-      const envVars = { ...get().envVars };
-      delete envVars['freshness-key'];
-      set({ currentScene: '', menuClass: '', envVars, userInputs: {} });
+      // A new story is loaded: its config (incl. freshness-key) arrives with the next response.
+      set({ currentScene: '', menuClass: '', envVars: {}, userInputs: {} });
     }
 
     const extra: Record<string, string> = userInputExtra(get);

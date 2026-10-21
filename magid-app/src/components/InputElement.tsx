@@ -4,6 +4,7 @@ import type { DetachedElementResponse } from '../types/protocol';
 import { useMagidStore } from '../store/magidStore';
 import { parseMagidCss } from '../lib/magidCss';
 import {useDebounce} from "../hooks/useDebounce.ts";
+import { useImpliedClasses } from '../hooks/useImpliedClasses';
 
 interface Props {
   data: DetachedElementResponse;
@@ -63,6 +64,7 @@ export function InputElement({ data }: Props) {
   const setUserInput = useMagidStore((s) => s.setUserInput);
   const debouncedValue = useDebounce(value, 500);
   const firstRun = useRef(true);
+  const inputClass = useImpliedClasses(data.class);
 
   const inputType = data['input-type'] ?? 'text';
   const isAsync = (data['input-async'] ?? "").toLowerCase() === 'true';
@@ -73,7 +75,7 @@ export function InputElement({ data }: Props) {
   }
 
   const style = data.css ? parseMagidCss(data.css) : undefined;
-  const className = ['magid-input-element', data.class].filter(Boolean).join(' ');
+  const className = ['magid-input-element', inputClass].filter(Boolean).join(' ');
   const handleChange = (newValue: string) => {
     setUserInput(name, newValue)
     if ( isAsync ) {

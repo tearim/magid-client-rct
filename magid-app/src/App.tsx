@@ -6,6 +6,7 @@ import { OptionsModal } from './components/OptionsModal';
 import { ServerStatsDashboard } from './components/ServerStatsDashboard';
 import { ToastContainer } from './components/ToastContainer';
 import { useMagidStore } from './store/magidStore';
+import { useImpliedClasses } from './hooks/useImpliedClasses';
 import { prefs, PREF_KEYS, urlHistory } from './prefs/prefHelper';
 import { requestXml } from './api/magidClient';
 import { clientConfig } from './config/clientConfig';
@@ -14,6 +15,8 @@ import styles from './App.module.css';
 export default function App() {
   const { elements, isLoading, error, baseUrl, setBaseUrl, sendCommand, connected, menuClass,
           sessionId, endSession, serverConnected, connectivityBlockedError } = useMagidStore();
+
+  const impliedMenuClass = useImpliedClasses(menuClass);
 
   const debugAlwaysAllowConnectivity = prefs.getBoolean(PREF_KEYS.DEBUG_ALWAYS_ALLOW_CONNECTIVITY);
   const connectDisabled = !!connectivityBlockedError && !debugAlwaysAllowConnectivity;
@@ -165,7 +168,7 @@ export default function App() {
         </div>
       )}
 
-      <main className={[styles.main, menuClass].filter(Boolean).join(' ')}>
+      <main className={[styles.main, impliedMenuClass].filter(Boolean).join(' ')}>
         {elements.length > 0
           ? <MagidRoot elements={elements} />
           : isLoading

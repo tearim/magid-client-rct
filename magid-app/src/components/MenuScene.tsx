@@ -10,6 +10,7 @@ import { useMagidCommand } from '../hooks/useMagidCommand';
 import { useMagidStore } from '../store/magidStore';
 import { renderTextWithAnchors } from '../lib/renderText';
 import {getConsequentalTypingConfig} from "./NarrationText.tsx";
+import { useImpliedClasses } from '../hooks/useImpliedClasses';
 
 interface Props {
   data: MenuResponse;
@@ -23,7 +24,8 @@ export function MenuScene({ data }: Props) {
   const volume = isNaN(storedVolume) ? 0.8 : storedVolume;
   const skipTimelines = prefs.getBoolean(PREF_KEYS.NARRATION_IGNORE_TEXT_TL);
   const rawDesc = data['menu-description'] ?? '';
-  const consequentalTypingConfig = getConsequentalTypingConfig(data['menu-class']);
+  const menuClass = useImpliedClasses(data['menu-class']);
+  const consequentalTypingConfig = getConsequentalTypingConfig(menuClass);
   const displayed = useTypewriter(rawDesc, skipTimelines, consequentalTypingConfig);
   const typingComplete = displayed === rawDesc;
 
