@@ -16,8 +16,7 @@ export const PREF_KEYS = {
   VIEWPORT_IGNORE_MAXIMIZE:   'viewport.ignoremaximization',
   DEBUG_ALWAYS_ALLOW_CONNECTIVITY: 'debug.alwaysallowconnectivity',
   MUSIC_VOLUME:               'music.volume',
-  SESSION_ID:                 'session.id',
-  FILE_REQUEST_TOKEN:         'session.file-request-token',
+  // Session id / file request token are persisted by @magid/client-core (STORAGE_KEYS) through this localStorage.
 } as const;
 
 const URL_HISTORY_KEY = 'server.address.history';

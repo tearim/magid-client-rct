@@ -8,13 +8,12 @@ import { ToastContainer } from './components/ToastContainer';
 import { useMagidStore } from './store/magidStore';
 import { useImpliedClasses } from './hooks/useImpliedClasses';
 import { prefs, PREF_KEYS, urlHistory } from './prefs/prefHelper';
-import { requestXml } from './api/magidClient';
 import { clientConfig } from './config/clientConfig';
 import styles from './App.module.css';
 
 export default function App() {
-  const { elements, isLoading, error, baseUrl, setBaseUrl, sendCommand, connected, menuClass,
-          sessionId, endSession, serverConnected, connectivityBlockedError } = useMagidStore();
+  const { elements, isLoading, error, baseUrl, setBaseUrl, sendCommand, selectStory, resetStory, can, connected,
+          menuClass, sessionId, endSession, serverConnected, connectivityBlockedError } = useMagidStore();
 
   const impliedMenuClass = useImpliedClasses(menuClass);
 
@@ -40,22 +39,18 @@ export default function App() {
     const savedUrl = prefs.get(PREF_KEYS.SERVER_ADDRESS, 'http://localhost:8090');
     setBaseUrl(savedUrl);
 
-    async function startup(url: string) {
+    async function startup() {
       const armXml    = prefs.getBoolean(PREF_KEYS.STARTUP_ARM_XML);
       const storyXml  = prefs.get(PREF_KEYS.STORY_XML);
       if (armXml && storyXml) {
-        try {
-          await sendCommand('')
-          await requestXml(url, storyXml, useMagidStore.getState().sessionId ?? undefined);
-        } catch {
-          showMessage('Failed to load saved XML');
-        }
+        await sendCommand('');
+        if (!await selectStory(storyXml)) showMessage('Failed to load saved XML');
       }
 
       void sendCommand('');
     }
 
-    startup(savedUrl);
+    void startup();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -78,9 +73,8 @@ export default function App() {
   };
 
   const handleResetServer = async () => {
-    await sendCommand('reload-xml');
+    await resetStory();
     await sendCommand('');
-    //useMagidStore.getState().resetVars();
   };
 
   const handleBaseUrlChange = (url: string) => {
@@ -111,7 +105,7 @@ export default function App() {
           {statusMsg && <span className={styles.statusMsg}>{statusMsg}</span>}
           {isLoading && <span className={styles.spinner} aria-label="Loading" />}
           <span className={`${styles.connDot} ${connected ? styles.connDotOn : ''}`} title={connected ? 'Connected' : 'Disconnected'} />
-          {clientConfig.showResetServerButton && (
+          {can('reset-story') && (
             <button
               className={styles.resetBtn}
               onClick={handleResetServer}

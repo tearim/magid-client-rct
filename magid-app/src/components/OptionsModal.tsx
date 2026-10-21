@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
 import { prefs, PREF_KEYS, urlHistory } from '../prefs/prefHelper';
-import { requestXml } from '../api/magidClient';
 import styles from './OptionsModal.module.css';
 import { useMagidStore } from '../store/magidStore';
 
@@ -16,8 +15,7 @@ interface Props {
 export function OptionsModal({ baseUrl, onBaseUrlChange, onClose, onMessage, onOpenStats, focusOnUrl }: Props) {
   const xmlList        = useMagidStore((s) => s.xmlList);
   const refreshXmlList = useMagidStore((s) => s.refreshXmlList);
-  const clearCssFiles  = useMagidStore((s) => s.clearCssFiles);
-  const loadResponse   = useMagidStore((s) => s.loadResponse);
+  const selectStory    = useMagidStore((s) => s.selectStory);
 
   const [serverAddr, setServerAddr]     = useState(() => prefs.get(PREF_KEYS.SERVER_ADDRESS, baseUrl));
   const [selectedXml, setSelectedXml]  = useState(() => prefs.get(PREF_KEYS.STORY_XML));
@@ -49,10 +47,8 @@ export function OptionsModal({ baseUrl, onBaseUrlChange, onClose, onMessage, onO
   const handleArmXml = async () => {
     if (!selectedXml) return;
     setArmingXml(true);
-    clearCssFiles();
     try {
-      const raw = await requestXml(serverAddr, selectedXml, useMagidStore.getState().sessionId ?? undefined);
-      const ok = loadResponse(raw);
+      const ok = await selectStory(selectedXml);
       if (!ok) {
         // Server rejected the XML (e.g. a parse error) — the resulting message/block
         // state is already surfaced by the store; stay open so the user can pick another.

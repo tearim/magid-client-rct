@@ -44,3 +44,18 @@ export function clearInjectedStylesheets(): void {
   blobUrlMap.forEach((blobUrl) => URL.revokeObjectURL(blobUrl));
   blobUrlMap.clear();
 }
+
+// Brings the injected <link>s in line with the client's `stylesheets` state: new URLs are added; if any applied URL
+// is gone (story reset/switch, session end), everything is cleared and re-applied.
+let appliedStylesheets: string[] = [];
+
+export function syncStylesheets(urls: string[], fileRequestToken?: string, authToken?: string): void {
+  if (urls === appliedStylesheets) return;
+  const keepsApplied = appliedStylesheets.every((u) => urls.includes(u));
+  if (!keepsApplied) clearInjectedStylesheets();
+  const alreadyApplied = keepsApplied ? appliedStylesheets : [];
+  for (const url of urls) {
+    if (!alreadyApplied.includes(url)) void injectStyleLink(url, fileRequestToken, authToken);
+  }
+  appliedStylesheets = urls;
+}
