@@ -6,12 +6,6 @@ Delete an entry once it's resolved. Each entry: what's wrong, where, why it matt
 
 ## Protocol / parsing
 
-### P2. `-mg-*` inline CSS properties are dropped (2026-10-21)
-- `magid-core/src/magidCss.ts` skips every property starting with `-mg-` (same line as `-fx-`). CLAUDE.md used to say they
-  were converted (`-mg-abs-x`, `-mg-window-width`); they are not, so a story using them gets no effect in this client.
-- Check what the JFX client does with them and whether stories use them (`grep -r "\-mg-" content/` in the server repo),
-  then either map them (e.g. `-mg-abs-x` → `left` + `position: absolute`) or document them as JFX-only.
-
 ### P3. Text before the first `DCSTP_` marker is cut at its first `@` (2026-10-23)
 - `parseTextSegments` (`magid-core/src/textTimeline.ts`) treats every part of `raw.split('DCSTP_')` as `ms@text`, also the
   part *before* the first marker. `resolveCleanText('mail a@b DCSTP_5@c')` gives `"b c"`: `mail a@` is lost.

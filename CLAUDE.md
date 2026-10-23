@@ -165,8 +165,9 @@ Two independent CSS mechanisms exist — don't confuse them:
   attached (since `<link href>` can't carry headers).
 - `magid-core/src/magidCss.ts` (`parseMagidCss`) converts inline per-element `css`/`menu-css` strings
   (web CSS syntax) into a `MagidStyle` (plain camelCased record: a React `style` prop or `Object.assign(el.style, …)`).
-  Bare `left`/`top`/… numbers get `px` and imply `position: absolute`. Custom `-mg-*` properties (e.g.
-  `-mg-abs-x`/`-mg-window-width`) and JavaFX-only `-fx-*` properties are currently dropped.
+  Bare `left`/`top`/… numbers get `px` and imply `position: absolute`. `-mg-abs-x`/`-mg-abs-y` act like `left`/`top`
+  and win over them (as in the JFX client). Window-level `-mg-*` (`-mg-window-*`, `-mg-resizable`, `-mg-screen`) and
+  JavaFX-only `-fx-*` properties are dropped.
 
 ### Typewriter animation
 
