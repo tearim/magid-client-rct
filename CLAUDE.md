@@ -195,7 +195,8 @@ state machine into a sanitized tree (`HtmlNode[]`); `magid-app/src/lib/renderHtm
   (console log), since a body `<title>` is invisible and React 19 hoists it into `<head>`. `<img>` from the Magid server
   (`src` starting with `baseUrl`, i.e. a resolved `magid:///…`) gets `file-request-token` (`withFileRequestToken`), since
   an image request can't carry the Bearer header; external images are left alone so the token never leaves the server.
-  Renderers pass `{ baseUrl, fileRequestToken }` to `prepareDisplayText` and re-parse when they change. `style` goes
+
+The components pass `{ baseUrl, fileRequestToken }` to `prepareDisplayText` and re-parse when they change. `style` goes
 through `parseMagidCss`. `prepareDisplayText` hands the typewriter only the visible text (with DCSTP_ markers) and
 `truncateHtml` cuts the tree by visible characters, so tags are never typed: an element appears whole with its first
 character. The last-letters/words effects apply to the last text node only, the isolating ones to every text node.
