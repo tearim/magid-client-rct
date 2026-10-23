@@ -13,4 +13,5 @@ declare class URL {
 
 declare const console: {
   warn(...args: unknown[]): void;
+  log(...args: unknown[]): void;
 };

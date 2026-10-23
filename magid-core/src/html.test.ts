@@ -10,8 +10,9 @@ const el = (tag: string, children: HtmlNode[] = [], attributes: Record<string, s
 
 function parse(source: string, p: HtmlPolicy | null = policy) {
   const warnings: string[] = [];
-  const nodes = parseHtml(source, p, (m) => warnings.push(m));
-  return { nodes, warnings };
+  const notes: string[] = [];
+  const nodes = parseHtml(source, p, { warn: (m) => warnings.push(m), log: (m) => notes.push(m) });
+  return { nodes, warnings, notes };
 }
 
 describe('parseHtmlPolicy', () => {
@@ -94,6 +95,14 @@ describe('parseHtml', () => {
     const { nodes, warnings } = parse('<b id="1">x</b> 1<b c>');
     expect(nodes).toEqual([el('b', [text('x')]), text(' 1<b c>')]);
     expect(warnings).toHaveLength(1);
+  });
+
+  it('renders an allowed <title> as a span with class "title" and logs a note', () => {
+    const p: HtmlPolicy = { tags: ['title', 'b'], attributes: ['class'] };
+    const { nodes, warnings, notes } = parse('<title class="big">The <b>End</b></title> after', p);
+    expect(nodes).toEqual([el('span', [text('The '), el('b', [text('End')])], { class: 'title big' }), text(' after')]);
+    expect(warnings).toEqual([]);
+    expect(notes).toHaveLength(1);
   });
 
   it('closes elements left open and ignores stray end tags', () => {

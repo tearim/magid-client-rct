@@ -190,7 +190,9 @@ state machine into a sanitized tree (`HtmlNode[]`); `magid-app/src/lib/renderHtm
 - **Tag not in `allowed-tags`**: removed, content kept, console warning.
 - **Attribute with a value not in `allowed-tag-attributes`** (`id="x"`): removed from the tag, console warning. `on*` and
   `javascript:`/`vbscript:` URLs are always removed.
-- A literal tag that would otherwise parse is written `&lt;b>` (in story XML: `&amp;lt;b>`). `style` goes
+- A literal tag that would otherwise parse is written `&lt;b>` (in story XML: `&amp;lt;b>`).
+- **Transformed tags** (`TAG_PROCESSORS` in `html.ts`, the one place for them): `<title>` → `<span class="title">`
+  (console log), since a body `<title>` is invisible and React 19 hoists it into `<head>`. `style` goes
 through `parseMagidCss`. `prepareDisplayText` hands the typewriter only the visible text (with DCSTP_ markers) and
 `truncateHtml` cuts the tree by visible characters, so tags are never typed: an element appears whole with its first
 character. The last-letters/words effects apply to the last text node only, the isolating ones to every text node.

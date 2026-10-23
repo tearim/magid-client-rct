@@ -13,6 +13,7 @@ import { hasTimeLineStops, resolveCleanText } from './textTimeline';
 // - An attribute with a value (`id="x"`) not in `allowed-tag-attributes` is removed from the tag (console warning).
 //   `on*` handlers and `javascript:`/`vbscript:` URLs are removed even if listed.
 // - To show a literal tag that would otherwise parse, authors write `&lt;` (in the XML: `&amp;lt;`).
+// - Some allowed tags are transformed (TAG_PROCESSORS), e.g. `<title>` → `<span class="title">` (console log).
 
 export interface HtmlPolicy {
   tags: string[];
@@ -26,6 +27,14 @@ export type HtmlNode =
 export const VOID_TAGS = ['area', 'br', 'col', 'embed', 'hr', 'img', 'input', 'link', 'meta', 'source', 'track', 'wbr'];
 
 const SCRIPT_URL = /^\s*(javascript|vbscript):/i;
+
+// Where parsing reports what it changed: removals are warnings, transformations are notes.
+export interface HtmlReport {
+  warn(message: string): void;
+  log(message: string): void;
+}
+
+const consoleReport: HtmlReport = { warn: (m) => console.warn(m), log: (m) => console.log(m) };
 
 function splitList(csv: string | undefined): string[] {
   return (csv ?? '').split(',').map((s) => s.trim().toLowerCase()).filter(Boolean);
@@ -226,16 +235,28 @@ export function decodeEntities(s: string): string {
 
 type ElementNode = Extract<HtmlNode, { type: 'element' }>;
 
+// Allowed tags that can't be rendered as they are, rewritten after their attributes were filtered. The one place that
+// knows about such tags: add new ones here (e.g. an `img` that needs the file-request-token).
+export const TAG_PROCESSORS: Record<string, (el: ElementNode, report: HtmlReport) => ElementNode> = {
+  // A <title> in the body is invisible (and React 19 hoists it into <head>, retitling the page).
+  title: (el, report) => {
+    report.log('[magid] <title> in display text is rendered as <span class="title">');
+    const className = ['title', el.attributes.class].filter(Boolean).join(' ');
+    return { ...el, tag: 'span', attributes: { ...el.attributes, class: className } };
+  },
+};
+
 export function parseHtml(
   source: string,
   policy: HtmlPolicy | null,
-  warn: (message: string) => void = (m) => console.warn(m),
+  report: HtmlReport = consoleReport,
 ): HtmlNode[] {
   if (!policy) return source ? [{ type: 'text', text: source }] : [];
 
   const root: HtmlNode[] = [];
-  const stack: ElementNode[] = [];
-  const children = () => (stack.length ? stack[stack.length - 1].children : root);
+  // Open elements with the tag their end tag will name (a processor may have renamed the element).
+  const stack: { el: ElementNode; tag: string }[] = [];
+  const children = () => (stack.length ? stack[stack.length - 1].el.children : root);
   const appendText = (text: string) => {
     const list = children();
     const last = list[list.length - 1];
@@ -252,26 +273,28 @@ export function parseHtml(
         continue;
       }
       if (!policy.tags.includes(token.tag)) {
-        warn(`[magid] <${token.tag}> is not in allowed-tags; the tag was removed, its content kept`);
+        report.warn(`[magid] <${token.tag}> is not in allowed-tags; the tag was removed, its content kept`);
         continue;
       }
       const attributes: Record<string, string> = {};
       for (const [name, rawValue] of token.attributes) {
         const value = decodeEntities(rawValue ?? '');
         if (!policy.attributes.includes(name)) {
-          warn(`[magid] attribute "${name}" on <${token.tag}> is not in allowed-tag-attributes; removed`);
+          report.warn(`[magid] attribute "${name}" on <${token.tag}> is not in allowed-tag-attributes; removed`);
         } else if (name.startsWith('on') || SCRIPT_URL.test(value)) {
-          warn(`[magid] attribute "${name}" on <${token.tag}> would run script; removed`);
+          report.warn(`[magid] attribute "${name}" on <${token.tag}> would run script; removed`);
         } else {
           attributes[name] = value;
         }
       }
-      const el: ElementNode = { type: 'element', tag: token.tag, attributes, children: [] };
+      let el: ElementNode = { type: 'element', tag: token.tag, attributes, children: [] };
+      const processor = TAG_PROCESSORS[token.tag];
+      if (processor) el = processor(el, report);
       children().push(el);
-      if (!token.selfClosing && !VOID_TAGS.includes(token.tag)) stack.push(el);
+      if (!token.selfClosing && !VOID_TAGS.includes(token.tag)) stack.push({ el, tag: token.tag });
     } else {
       // Close the innermost open element of that name (and anything left open inside it); stray end tags are ignored.
-      const at = stack.map((e) => e.tag).lastIndexOf(token.tag);
+      const at = stack.map((open) => open.tag).lastIndexOf(token.tag);
       if (at !== -1) stack.length = at;
     }
   }
@@ -315,9 +338,9 @@ export function truncateHtml(nodes: HtmlNode[], visibleChars: number): HtmlNode[
 export function prepareDisplayText(
   raw: string,
   policy: HtmlPolicy | null,
-  warn?: (message: string) => void,
+  report?: HtmlReport,
 ): { nodes: HtmlNode[]; timeline: string } {
-  const parsed = parseHtml(raw, policy, warn);
+  const parsed = parseHtml(raw, policy, report);
   const timeline = htmlToText(parsed);
   if (!hasTimeLineStops(timeline)) return { nodes: parsed, timeline };
   const clean = (list: HtmlNode[]): HtmlNode[] =>
