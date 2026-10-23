@@ -1,6 +1,7 @@
 import { isCommandAllowed, parseAllowedCommands } from './capabilities';
 import { parseResponse, type ParsedElement } from './elementFactory';
 import { ERROR_CODES, isConnectivityBlockingCode } from './errorCodes';
+import { parseHtmlPolicy, type HtmlPolicy } from './html';
 import type { ConfigData, DetachedElementResponse, ServerErrorPayload, XmlEntry } from './protocol';
 import { memoryStorage, STORAGE_KEYS, type KeyValueStorage } from './storage';
 import * as transport from './transport';
@@ -34,8 +35,10 @@ export interface MagidClientState {
   // Stylesheet URLs the current story asked for (css-files / css-files-react), in order. Loading them is the
   // renderer's job (DOM helpers), since it needs the fileRequestToken and a document.
   stylesheets: string[];
-  // Server setting from config: `allowed-commands` (null until announced: everything allowed, see can()).
+  // Server settings from config: `allowed-commands` (null until announced: everything allowed, see can()) and the
+  // HTML allowed in display text (null until `allowed-tags` is announced: plain text; see html.ts).
   allowedCommands: string[] | null;
+  htmlPolicy: HtmlPolicy | null;
 }
 
 export interface MagidClientEvents {
@@ -60,8 +63,10 @@ export interface MagidClientOptions {
 // Commands that load a story from scratch: the previous story's CSS, vars, scene and inputs are dropped first.
 const STORY_LOADING_COMMANDS = ['reload-xml', 'set-xml'];
 
-// Server setting in config: applied to state, not passed on as a story var. Kept across story loads.
+// Server settings in config: applied to state, not passed on as story vars. Kept across story loads.
 const ALLOWED_COMMANDS = 'allowed-commands';
+const ALLOWED_TAGS = 'allowed-tags';
+const ALLOWED_TAG_ATTRIBUTES = 'allowed-tag-attributes';
 
 function parseServerError(raw: string): ServerErrorPayload | null {
   try {
@@ -127,6 +132,7 @@ export class MagidClient {
       userInputs: {},
       stylesheets: [],
       allowedCommands: null,
+      htmlPolicy: null,
     };
   }
 
@@ -200,6 +206,7 @@ export class MagidClient {
       serverDescription: null,
       serverIcon: null,
       allowedCommands: null,
+      htmlPolicy: null,
     });
   }
 
@@ -233,6 +240,7 @@ export class MagidClient {
         userInputs: {},
         stylesheets: [],
         allowedCommands: null,
+        htmlPolicy: null,
         connectivityBlockedError: null,
       });
     });
@@ -473,11 +481,14 @@ export class MagidClient {
     if (data[ALLOWED_COMMANDS] !== undefined) {
       this.set({ allowedCommands: parseAllowedCommands(data[ALLOWED_COMMANDS]) });
     }
+    if (data[ALLOWED_TAGS] !== undefined) {
+      this.set({ htmlPolicy: parseHtmlPolicy(data[ALLOWED_TAGS], data[ALLOWED_TAG_ATTRIBUTES]) });
+    }
 
     const envVars = { ...this.state.envVars };
     for (const [k, v] of Object.entries(data)) {
       if (k.startsWith('css-files') || v === undefined) continue;
-      if (k === ALLOWED_COMMANDS) continue;
+      if (k === ALLOWED_COMMANDS || k === ALLOWED_TAGS || k === ALLOWED_TAG_ATTRIBUTES) continue;
       if (k === 'view-port') this.emit('viewport', { mode: v });
       else if (k === 'menu-position') console.warn('[magid] menu-position is not implemented');
       envVars[k] = v;

@@ -1,6 +1,6 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import type { ReactNode } from 'react';
-import { getConsequentalTypingConfig, type MenuResponse } from '@magid/client-core';
+import { getConsequentalTypingConfig, prepareDisplayText, truncateHtml, type MenuResponse } from '@magid/client-core';
 import { CommandButton } from './CommandButton';
 import { DetachedElement } from './DetachedElement';
 import { useAudio } from '../hooks/useAudio';
@@ -9,6 +9,7 @@ import { prefs, PREF_KEYS } from '../prefs/prefHelper';
 import { useMagidCommand } from '../hooks/useMagidCommand';
 import { useMagidStore } from '../store/magidStore';
 import { renderTextWithAnchors } from '../lib/renderText';
+import { renderHtml } from '../lib/renderHtml';
 import { useImpliedClasses } from '../hooks/useImpliedClasses';
 
 interface Props {
@@ -23,10 +24,12 @@ export function MenuScene({ data }: Props) {
   const volume = isNaN(storedVolume) ? 0.8 : storedVolume;
   const skipTimelines = prefs.getBoolean(PREF_KEYS.NARRATION_IGNORE_TEXT_TL);
   const rawDesc = data['menu-description'] ?? '';
+  const htmlPolicy = useMagidStore((s) => s.htmlPolicy);
+  const { nodes, timeline } = useMemo(() => prepareDisplayText(rawDesc, htmlPolicy), [rawDesc, htmlPolicy]);
   const menuClass = useImpliedClasses(data['menu-class']);
   const consequentalTypingConfig = getConsequentalTypingConfig(menuClass);
-  const displayed = useTypewriter(rawDesc, skipTimelines, consequentalTypingConfig);
-  const typingComplete = displayed === rawDesc;
+  const displayed = useTypewriter(timeline, skipTimelines, consequentalTypingConfig);
+  const typingComplete = displayed === timeline;
 
   const detachedElements = data['detached-elements'] ?? [];
   const prependEls = detachedElements.filter((d) => d.detached === 'prepend');
@@ -73,7 +76,7 @@ export function MenuScene({ data }: Props) {
       {rawDesc && (
         <div ref={descRef} className="magid-menu-description">
           {prependEls.map((d, i) => <DetachedElement key={`prepend-${i}`} data={d} />)}
-          {renderTextWithAnchors(displayed, anchors)}
+          {renderHtml(truncateHtml(nodes, displayed.length), (text) => renderTextWithAnchors(text, anchors))}
           {typingComplete && appendEls.map((d, i) => <DetachedElement key={`append-${i}`} data={d} />)}
         </div>
       )}

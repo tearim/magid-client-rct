@@ -72,7 +72,7 @@ A migration is in progress (owner decisions, 2026-10-21). Done: pure helpers, th
 `fetch`, `clientType` announced as `client-type`) and the engine `MagidClient` (`client.ts`, tests in `client.test.ts`):
 `send`/`selectStory`/`resetStory`, **one command at a time** (queue), session/scene/freshness recovery, `notice` and
 `viewport` events instead of toasts/fullscreen, `stylesheets` as state, `can(command)` (see "Server settings in
-config" below). The React store is now a thin adapter over it. Next: a `@magid/client-core/dom` entry (stylesheets, fullscreen, audio)
+config" below), sanitized HTML in display text (`html.ts`). The React store is now a thin adapter over it. Next: a `@magid/client-core/dom` entry (stylesheets, fullscreen, audio)
 in the same package — one library, not several — and a vanilla example.
 Keep the core free of anything a non-React renderer couldn't use.
 
@@ -130,11 +130,12 @@ the server's `XmlBundleLoader`, so the valid form is `magid:///path` (three slas
   re-fetched, `notice`), or a freshness-key mismatch (same command retried once with the corrected key).
 - **Story loading** (`selectStory` = `set-xml`, `resetStory` = `reload-xml`) first drops stylesheets, vars, scene and
   inputs. Commands run **one at a time** (queue).
-- **Server setting in config** (not a story var, kept across story loads, cleared on session end / server change):
+- **Server settings in config** (not story vars, kept across story loads, cleared on session end / server change):
   - `allowed-commands` (`group:action,action;group:action`, parsed by `capabilities.ts`) → `state.allowedCommands`.
     `can(command)` tells the UI what to offer and the client refuses disallowed commands locally (no request). Only the
     server actions in `SERVER_ACTIONS` are gated; story commands always pass. Not announced yet = everything allowed.
     The operator's `disabledCommands` (`'reload-xml'` or `'xml:reload-xml'`) always win.
+  - `allowed-tags` / `allowed-tag-attributes` (comma-separated) → `state.htmlPolicy`; see "HTML in display text".
 
 `magid-app/src/store/magidStore.ts` creates the app's `magidClient` (`clientType` `react`, `localStorage` via `prefs`,
 `disabledCommands` from `clientConfig`), mirrors `getState()` into zustand, and handles what is UI-only: `notice` →
@@ -179,6 +180,15 @@ Per-element typing styles come from CSS class names on narration elements, parse
 - `type-by-letter-{ms|slow|normal|fast|rapid}` / `type-by-word-{…}`: letter- or word-wise reveal
   (named speeds: slow 30, normal 20, fast 10, rapid 5 ms).
 - `animation-resets-{ms}`: restart the animation every N ms (plural "resets").
+
+**HTML in display text** (narration and menu description): `magid-core/src/html.ts` parses the text once with a small
+state machine into a sanitized tree (`HtmlNode[]`); `magid-app/src/lib/renderHtml.tsx` builds React elements from it
+(never `innerHTML`). Without `allowed-tags` (`htmlPolicy` null) nothing is parsed: plain text as before. Tags not in
+`allowed-tags` are removed with their content kept; attributes not in `allowed-tag-attributes` are removed from allowed
+tags; `on*` and `javascript:`/`vbscript:` URLs are always removed; each removal logs a console warning. `style` goes
+through `parseMagidCss`. `prepareDisplayText` hands the typewriter only the visible text (with DCSTP_ markers) and
+`truncateHtml` cuts the tree by visible characters, so tags are never typed: an element appears whole with its first
+character. The last-letters/words effects apply to the last text node only, the isolating ones to every text node.
 
 `renderWithBreaks` (`magid-app/src/lib/renderText.tsx`) renders the text with `TypingStyle` (`byLetter`, `byWord`, and
 `…Isolating` variants) and keeps module-level reset bookkeeping, because it is a plain function and must not use hooks.

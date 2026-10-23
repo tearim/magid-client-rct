@@ -1,8 +1,12 @@
-import { useState, useEffect, useRef } from 'react';
-import { getConsequentalTypingConfig, parseMagidCss, resolveCleanText, type NarrationResponse } from '@magid/client-core';
+import { useState, useEffect, useMemo, useRef } from 'react';
+import {
+  getConsequentalTypingConfig, parseMagidCss, prepareDisplayText, resolveCleanText, truncateHtml, type NarrationResponse,
+} from '@magid/client-core';
 import { useTypewriter } from '../hooks/useTypewriter';
 import { prefs, PREF_KEYS } from '../prefs/prefHelper';
 import { renderWithBreaks, TypingStyle } from '../lib/renderText';
+import { renderHtml } from '../lib/renderHtml';
+import { useMagidStore } from '../store/magidStore';
 import { useImpliedClasses } from '../hooks/useImpliedClasses';
 
 interface Props {
@@ -18,6 +22,9 @@ export function NarrationText({ data, onComplete }: Props) {
   const [skipTimelines, setSkipTimelines] = useState(false);
   const completionReportedRef = useRef(false);
   const className = useImpliedClasses(data.class);
+  const htmlPolicy = useMagidStore((s) => s.htmlPolicy);
+  // Tags are parsed once; the typewriter only sees the visible text, so a tag appears whole, never typed out.
+  const { nodes, timeline } = useMemo(() => prepareDisplayText(rawText, htmlPolicy), [rawText, htmlPolicy]);
 
   useEffect(() => {
     setSkipTimelines(prefs.getBoolean(PREF_KEYS.NARRATION_IGNORE_TEXT_TL));
@@ -43,8 +50,8 @@ export function NarrationText({ data, onComplete }: Props) {
 
 
   const consequentalTypingConfig = getConsequentalTypingConfig(className);
-  const displayed = useTypewriter(rawText, skipTimelines, consequentalTypingConfig);
-  const cleanText = resolveCleanText(rawText);
+  const displayed = useTypewriter(timeline, skipTimelines, consequentalTypingConfig);
+  const cleanText = resolveCleanText(timeline);
   const completed = normalizedDeferMs === 0 && visible && displayed === cleanText;
 
   useEffect(() => {
@@ -78,7 +85,11 @@ export function NarrationText({ data, onComplete }: Props) {
 
   return (
       <div className={classes} style={style}>
-        {renderWithBreaks(displayed, typingStyle, consequentalTypingConfig.animationResets)}
+        {renderHtml(truncateHtml(nodes, displayed.length), (text, isLast) =>
+          // The reveal effects (last letters/words) belong at the reveal edge; the isolating ones apply everywhere.
+          isLast || typingStyle === TypingStyle.byLetterIsolating || typingStyle === TypingStyle.byWordIsolating
+            ? renderWithBreaks(text, typingStyle, consequentalTypingConfig.animationResets)
+            : renderWithBreaks(text))}
       </div>
   );
 }

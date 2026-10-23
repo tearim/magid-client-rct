@@ -12,6 +12,12 @@ Delete an entry once it's resolved. Each entry: what's wrong, where, why it matt
 - Check what the JFX client does with them and whether stories use them (`grep -r "\-mg-" content/` in the server repo),
   then either map them (e.g. `-mg-abs-x` → `left` + `position: absolute`) or document them as JFX-only.
 
+### P3. Text before the first `DCSTP_` marker is cut at its first `@` (2026-10-23)
+- `parseTextSegments` (`magid-core/src/textTimeline.ts`) treats every part of `raw.split('DCSTP_')` as `ms@text`, also the
+  part *before* the first marker. `resolveCleanText('mail a@b DCSTP_5@c')` gives `"b c"`: `mail a@` is lost.
+- Fix idea: only parts that followed a `DCSTP_` carry a delay (skip the `@` handling for index 0 unless the text starts
+  with the marker).
+
 ## Rendering
 
 ### R2. An implied `type-by-word-*` overrides an explicit `type-by-letter-*` (2026-10-21)
@@ -22,6 +28,11 @@ Delete an entry once it's resolved. Each entry: what's wrong, where, why it matt
 - Precedence between explicit and implied classes only works within the same family (first `type-by-word-*` wins).
 - Fix idea: in `getConsequentalTypingConfig`, let whichever `type-by-*` class comes first in the string win, so explicit
   classes (always first) beat implied ones.
+
+### R4. Menu "append" detached elements never appear when the description has `DCSTP_` markers (2026-10-23)
+- `MenuScene.tsx`: `typingComplete = displayed === timeline`, but `useTypewriter` ends with the marker-free text, so with
+  markers the comparison never holds and `appendEls` stay hidden. (Same before HTML support, with `rawDesc`.)
+- Fix idea: compare with `resolveCleanText(timeline)`, as `NarrationText` does.
 
 ## Tooling / hygiene
 

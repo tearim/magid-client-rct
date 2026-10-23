@@ -351,6 +351,27 @@ describe('MagidClient: capabilities', () => {
   });
 });
 
+describe('MagidClient: HTML policy', () => {
+  it('is null until the server announces allowed-tags', async () => {
+    const { fetch } = fakeServer({ responses: [session, config({ 'freshness-key': 'k1' }), menu('inn')] });
+    const { c } = client(fetch);
+    await c.send('');
+    expect(c.getState().htmlPolicy).toBeNull();
+  });
+
+  it('takes allowed-tags and allowed-tag-attributes from config, not as story vars', async () => {
+    const { fetch } = fakeServer({
+      responses: [session, config({ 'allowed-tags': 'b,i,img', 'allowed-tag-attributes': 'class,src' }), menu('inn')],
+    });
+    const { c } = client(fetch);
+
+    await c.send('');
+
+    expect(c.getState().htmlPolicy).toEqual({ tags: ['b', 'i', 'img'], attributes: ['class', 'src'] });
+    expect(c.getState().envVars).toEqual({});
+  });
+});
+
 describe('MagidClient: session end', () => {
   it('clears session, story state and storage', async () => {
     const storage = memoryStorage();
