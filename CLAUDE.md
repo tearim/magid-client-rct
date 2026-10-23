@@ -71,9 +71,8 @@ directly.
 A migration is in progress (owner decisions, 2026-10-21). Done: pure helpers, the transport (`transport.ts`: injectable
 `fetch`, `clientType` announced as `client-type`) and the engine `MagidClient` (`client.ts`, tests in `client.test.ts`):
 `send`/`selectStory`/`resetStory`, **one command at a time** (queue), session/scene/freshness recovery, `notice` and
-`viewport` events instead of toasts/fullscreen, `stylesheets` as state, `can(capability)` (server capabilities will
-come in config; until then everything is allowed except the operator's `disabledCapabilities`; disabled commands are
-refused locally). The React store is now a thin adapter over it. Next: a `@magid/client-core/dom` entry (stylesheets, fullscreen, audio)
+`viewport` events instead of toasts/fullscreen, `stylesheets` as state, `can(command)` (see "Server settings in
+config" below). The React store is now a thin adapter over it. Next: a `@magid/client-core/dom` entry (stylesheets, fullscreen, audio)
 in the same package — one library, not several — and a vanilla example.
 Keep the core free of anything a non-React renderer couldn't use.
 
@@ -130,10 +129,15 @@ the server's `XmlBundleLoader`, so the valid form is `magid:///path` (three slas
   retried), a blocking `E01*` error (`connectivityBlockedError`), a scene mismatch (action dismissed, current menu
   re-fetched, `notice`), or a freshness-key mismatch (same command retried once with the corrected key).
 - **Story loading** (`selectStory` = `set-xml`, `resetStory` = `reload-xml`) first drops stylesheets, vars, scene and
-  inputs. Commands run **one at a time** (queue); `can(capability)` gates guarded commands.
+  inputs. Commands run **one at a time** (queue).
+- **Server setting in config** (not a story var, kept across story loads, cleared on session end / server change):
+  - `allowed-commands` (`group:action,action;group:action`, parsed by `capabilities.ts`) → `state.allowedCommands`.
+    `can(command)` tells the UI what to offer and the client refuses disallowed commands locally (no request). Only the
+    server actions in `SERVER_ACTIONS` are gated; story commands always pass. Not announced yet = everything allowed.
+    The operator's `disabledCommands` (`'reload-xml'` or `'xml:reload-xml'`) always win.
 
 `magid-app/src/store/magidStore.ts` creates the app's `magidClient` (`clientType` `react`, `localStorage` via `prefs`,
-`disabledCapabilities` from `clientConfig`), mirrors `getState()` into zustand, and handles what is UI-only: `notice` →
+`disabledCommands` from `clientConfig`), mirrors `getState()` into zustand, and handles what is UI-only: `notice` →
 toasts, `viewport` → fullscreen (unless the user pref says no), `stylesheets` → `syncStylesheets`. Components keep
 using `useMagidStore`; protocol changes belong in the core, never in the store or components.
 

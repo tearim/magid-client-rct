@@ -1,3 +1,4 @@
+import { isCommandAllowed, parseAllowedCommands } from './capabilities';
 import { parseResponse, type ParsedElement } from './elementFactory';
 import { ERROR_CODES, isConnectivityBlockingCode } from './errorCodes';
 import type { ConfigData, DetachedElementResponse, ServerErrorPayload, XmlEntry } from './protocol';
@@ -33,6 +34,8 @@ export interface MagidClientState {
   // Stylesheet URLs the current story asked for (css-files / css-files-react), in order. Loading them is the
   // renderer's job (DOM helpers), since it needs the fileRequestToken and a document.
   stylesheets: string[];
+  // Server setting from config: `allowed-commands` (null until announced: everything allowed, see can()).
+  allowedCommands: string[] | null;
 }
 
 export interface MagidClientEvents {
@@ -49,18 +52,16 @@ export interface MagidClientOptions {
   fetch?: FetchLike;
   // Session persistence; in-memory by default (no persistence across reloads).
   storage?: KeyValueStorage;
-  // Operator restrictions: capabilities this deployment never offers, whatever the server allows.
-  disabledCapabilities?: string[];
+  // Commands (server actions) this deployment never offers, whatever the server allows: 'reload-xml' or
+  // 'xml:reload-xml'.
+  disabledCommands?: string[];
 }
 
 // Commands that load a story from scratch: the previous story's CSS, vars, scene and inputs are dropped first.
 const STORY_LOADING_COMMANDS = ['reload-xml', 'set-xml'];
 
-// Capability guarding each command. Names are provisional until the server announces capabilities (in config).
-const COMMAND_CAPABILITIES: Record<string, string> = {
-  'reload-xml': 'reset-story',
-  'set-xml': 'select-xml',
-};
+// Server setting in config: applied to state, not passed on as a story var. Kept across story loads.
+const ALLOWED_COMMANDS = 'allowed-commands';
 
 function parseServerError(raw: string): ServerErrorPayload | null {
   try {
@@ -95,7 +96,7 @@ export class MagidClient {
   private readonly clientType: string;
   private readonly fetchImpl?: FetchLike;
   private readonly storage: KeyValueStorage;
-  private readonly disabledCapabilities: Set<string>;
+  private readonly disabledCommands: string[];
   // One command at a time: every command is chained onto the previous one.
   private queue: Promise<unknown> = Promise.resolve();
 
@@ -103,7 +104,7 @@ export class MagidClient {
     this.clientType = options.clientType;
     this.fetchImpl = options.fetch;
     this.storage = options.storage ?? memoryStorage();
-    this.disabledCapabilities = new Set(options.disabledCapabilities ?? []);
+    this.disabledCommands = options.disabledCommands ?? [];
     const sessionId = this.storage.get(STORAGE_KEYS.SESSION_ID) || null;
     this.state = {
       baseUrl: options.baseUrl,
@@ -125,6 +126,7 @@ export class MagidClient {
       envVars: {},
       userInputs: {},
       stylesheets: [],
+      allowedCommands: null,
     };
   }
 
@@ -159,10 +161,11 @@ export class MagidClient {
 
   // ---- capabilities ----------------------------------------------------------------------------------------------
 
-  // Whether the UI should offer a function. Server-announced capabilities are not implemented yet (the server will
-  // send them in config), so for now only the operator's disabledCapabilities restrict anything.
-  can(capability: string): boolean {
-    return !this.disabledCapabilities.has(capability);
+  // Whether the UI should offer a command (e.g. 'reload-xml' for a reset button). Server actions need to be in the
+  // server's `allowed-commands` (everything is allowed until it announces them); story commands always pass; the
+  // operator's disabledCommands always win. Disabled commands are refused locally.
+  can(command: string): boolean {
+    return isCommandAllowed(command, this.state.allowedCommands, this.disabledCommands);
   }
 
   // ---- commands --------------------------------------------------------------------------------------------------
@@ -196,11 +199,13 @@ export class MagidClient {
       serverVersion: null,
       serverDescription: null,
       serverIcon: null,
+      allowedCommands: null,
     });
   }
 
   refreshXmlList(): Promise<void> {
     return this.enqueue(async () => {
+      if (!this.can('list-xmls')) return;
       try {
         const list = await transport.getXmlList(this.transportConfig(this.state.sessionId));
         if (list.length > 0) this.set({ xmlList: list });
@@ -213,7 +218,7 @@ export class MagidClient {
   endSession(): Promise<void> {
     return this.enqueue(async () => {
       try {
-        await transport.endSession(this.transportConfig(this.state.sessionId));
+        if (this.can('end-session')) await transport.endSession(this.transportConfig(this.state.sessionId));
       } catch {
         // Session may already be gone on the server side; proceed with cleanup.
       }
@@ -227,6 +232,7 @@ export class MagidClient {
         envVars: {},
         userInputs: {},
         stylesheets: [],
+        allowedCommands: null,
         connectivityBlockedError: null,
       });
     });
@@ -326,8 +332,7 @@ export class MagidClient {
 
   // Runs one command including the sync/session recovery protocol. Never throws; failures end up in state/notices.
   private async run(cmd: string, cmdExtra: Record<string, string> = {}): Promise<boolean> {
-    const capability = COMMAND_CAPABILITIES[cmd];
-    if (capability && !this.can(capability)) {
+    if (!this.can(cmd)) {
       this.emit('notice', { message: `"${cmd}" is not available.` });
       return false;
     }
@@ -465,9 +470,14 @@ export class MagidClient {
       this.set({ stylesheets });
     }
 
+    if (data[ALLOWED_COMMANDS] !== undefined) {
+      this.set({ allowedCommands: parseAllowedCommands(data[ALLOWED_COMMANDS]) });
+    }
+
     const envVars = { ...this.state.envVars };
     for (const [k, v] of Object.entries(data)) {
       if (k.startsWith('css-files') || v === undefined) continue;
+      if (k === ALLOWED_COMMANDS) continue;
       if (k === 'view-port') this.emit('viewport', { mode: v });
       else if (k === 'menu-position') console.warn('[magid] menu-position is not implemented');
       envVars[k] = v;

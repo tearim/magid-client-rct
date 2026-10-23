@@ -283,22 +283,71 @@ describe('MagidClient: recovery', () => {
 });
 
 describe('MagidClient: capabilities', () => {
-  it('allows everything by default', () => {
+  const ALLOWED = 'core:server-status,end-session;xml:list-xmls,set-xml';
+
+  it('allows everything until the server announces allowed-commands', () => {
     const { c } = client(fakeServer().fetch);
-    expect(c.can('reset-story')).toBe(true);
-    expect(c.can('select-xml')).toBe(true);
+    expect(c.getState().allowedCommands).toBeNull();
+    expect(c.can('reload-xml')).toBe(true);
+    expect(c.can('set-xml')).toBe(true);
   });
 
-  it('refuses commands of capabilities the operator disabled, without contacting the server', async () => {
-    const { fetch, requests } = fakeServer();
-    const { c, notices } = client(fetch, { disabledCapabilities: ['reset-story'] });
+  it('takes allowed-commands from config, not as a story var', async () => {
+    const { fetch } = fakeServer({ responses: [session, config({ 'allowed-commands': ALLOWED }), menu('inn')] });
+    const { c } = client(fetch);
 
-    expect(c.can('reset-story')).toBe(false);
+    await c.send('');
+
+    expect(c.can('set-xml')).toBe(true);
+    expect(c.can('reload-xml')).toBe(false);
+    expect(c.can('go-north')).toBe(true);
+    expect(c.getState().envVars).not.toHaveProperty('allowed-commands');
+  });
+
+  it('refuses commands the server does not allow, without contacting it', async () => {
+    const { fetch, requests } = fakeServer({ responses: [session, config({ 'allowed-commands': ALLOWED }), menu('inn')] });
+    const { c, notices } = client(fetch);
+    await c.send('');
+
     expect(await c.resetStory()).toBe(false);
-    await c.send('reload-xml');
+
+    expect(requests).toHaveLength(1);
+    expect(notices).toHaveLength(1);
+  });
+
+  it('keeps allowed-commands when another story is loaded', async () => {
+    const { fetch } = fakeServer(
+      { responses: [session, config({ 'allowed-commands': ALLOWED }), menu('inn')] },
+      { status: 'The server was reloaded.' },
+    );
+    const { c } = client(fetch);
+    await c.send('');
+
+    await c.selectStory('other.xml');
+
+    expect(c.can('reload-xml')).toBe(false);
+  });
+
+  it('refuses commands the operator disabled, without contacting the server', async () => {
+    const { fetch, requests } = fakeServer();
+    const { c, notices } = client(fetch, { disabledCommands: ['reload-xml'] });
+
+    expect(c.can('reload-xml')).toBe(false);
+    expect(await c.resetStory()).toBe(false);
+    await c.send('xml:reload-xml');
 
     expect(requests).toHaveLength(0);
     expect(notices).toHaveLength(2);
+  });
+
+  it('does not ask the server for the XML list when list-xmls is not allowed', async () => {
+    const { fetch, requests } = fakeServer({ responses: [session, config({ 'allowed-commands': 'xml:set-xml' }), menu('inn')] });
+    const { c } = client(fetch);
+    await c.send('');
+
+    await c.refreshXmlList();
+
+    expect(requests).toHaveLength(1);
   });
 });
 

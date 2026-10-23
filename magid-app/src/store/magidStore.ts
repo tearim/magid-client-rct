@@ -22,7 +22,7 @@ interface MagidActions {
   refreshXmlList: () => Promise<void>;
   setUserInput: (name: string, value: string) => void;
   endSession: () => Promise<void>;
-  can: (capability: string) => boolean;
+  can: (command: string) => boolean;
   addToast: (message: string) => void;
   dismissToast: (id: string) => void;
 }
@@ -33,7 +33,7 @@ export const magidClient = new MagidClient({
   baseUrl: 'http://localhost:8090',
   clientType: CLIENT_TYPE,
   storage: { get: (key) => prefs.get(key) || null, set: (key, value) => prefs.set(key, value) },
-  disabledCapabilities: clientConfig.showResetServerButton ? [] : ['reset-story'],
+  disabledCommands: clientConfig.showResetServerButton ? [] : ['reload-xml'],
 });
 
 export const useMagidStore = create<MagidState>((set) => ({
@@ -47,7 +47,7 @@ export const useMagidStore = create<MagidState>((set) => ({
   refreshXmlList: () => magidClient.refreshXmlList(),
   setUserInput: (name, value) => magidClient.setUserInput(name, value),
   endSession: () => magidClient.endSession(),
-  can: (capability) => magidClient.can(capability),
+  can: (command) => magidClient.can(command),
 
   addToast: (message) => {
     const id = crypto.randomUUID();

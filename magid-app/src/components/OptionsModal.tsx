@@ -14,6 +14,8 @@ interface Props {
 
 export function OptionsModal({ baseUrl, onBaseUrlChange, onClose, onMessage, onOpenStats, focusOnUrl }: Props) {
   const xmlList        = useMagidStore((s) => s.xmlList);
+  const canSelectStory = useMagidStore((s) => s.can('set-xml'));
+  const canShowStats   = useMagidStore((s) => s.can('server-stats'));
   const refreshXmlList = useMagidStore((s) => s.refreshXmlList);
   const selectStory    = useMagidStore((s) => s.selectStory);
 
@@ -103,6 +105,7 @@ export function OptionsModal({ baseUrl, onBaseUrlChange, onClose, onMessage, onO
           </datalist>
         </label>
 
+        {canSelectStory && <>
         <label className={styles.field}>
           <span className={styles.xmlLabel}>
             Story XML
@@ -146,6 +149,7 @@ export function OptionsModal({ baseUrl, onBaseUrlChange, onClose, onMessage, onO
           <input type="checkbox" checked={startupArm} onChange={(e) => setStartupArm(e.target.checked)} />
           Auto-load XML on startup
         </label>
+        </>}
         <label className={styles.checkRow}>
           <input type="checkbox" checked={ignoreTimelines} onChange={(e) => setIgnoreTimelines(e.target.checked)} />
           Ignore narration timelines
@@ -181,7 +185,7 @@ export function OptionsModal({ baseUrl, onBaseUrlChange, onClose, onMessage, onO
         </label>
 
         <div className={styles.actions}>
-          <button onClick={onOpenStats} className={styles.statsBtn}>Server Stats</button>
+          {canShowStats && <button onClick={onOpenStats} className={styles.statsBtn}>Server Stats</button>}
           <button onClick={handleSave} className={styles.saveBtn}>Save</button>
           <button onClick={onClose} className={styles.cancelBtn}>Cancel</button>
         </div>

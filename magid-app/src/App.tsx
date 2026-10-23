@@ -105,7 +105,7 @@ export default function App() {
           {statusMsg && <span className={styles.statusMsg}>{statusMsg}</span>}
           {isLoading && <span className={styles.spinner} aria-label="Loading" />}
           <span className={`${styles.connDot} ${connected ? styles.connDotOn : ''}`} title={connected ? 'Connected' : 'Disconnected'} />
-          {can('reset-story') && (
+          {can('reload-xml') && (
             <button
               className={styles.resetBtn}
               onClick={handleResetServer}
