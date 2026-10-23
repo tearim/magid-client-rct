@@ -25,7 +25,11 @@ export function MenuScene({ data }: Props) {
   const skipTimelines = prefs.getBoolean(PREF_KEYS.NARRATION_IGNORE_TEXT_TL);
   const rawDesc = data['menu-description'] ?? '';
   const htmlPolicy = useMagidStore((s) => s.htmlPolicy);
-  const { nodes, timeline } = useMemo(() => prepareDisplayText(rawDesc, htmlPolicy), [rawDesc, htmlPolicy]);
+  const baseUrl = useMagidStore((s) => s.baseUrl);
+  const { nodes, timeline } = useMemo(
+    () => prepareDisplayText(rawDesc, htmlPolicy, { baseUrl, fileRequestToken }),
+    [rawDesc, htmlPolicy, baseUrl, fileRequestToken],
+  );
   const menuClass = useImpliedClasses(data['menu-class']);
   const consequentalTypingConfig = getConsequentalTypingConfig(menuClass);
   const displayed = useTypewriter(timeline, skipTimelines, consequentalTypingConfig);

@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
-  decodeEntities, htmlTextLength, parseHtml, parseHtmlPolicy, prepareDisplayText, truncateHtml, type HtmlNode, type HtmlPolicy,
+  decodeEntities, htmlTextLength, parseHtml, parseHtmlPolicy, prepareDisplayText, truncateHtml, withFileRequestToken,
+  type HtmlNode, type HtmlPolicy,
 } from './html';
 
 const policy: HtmlPolicy = { tags: ['b', 'i', 'img', 'p', 'span'], attributes: ['class', 'style', 'src'] };
@@ -8,10 +9,11 @@ const text = (t: string): HtmlNode => ({ type: 'text', text: t });
 const el = (tag: string, children: HtmlNode[] = [], attributes: Record<string, string> = {}): HtmlNode =>
   ({ type: 'element', tag, attributes, children });
 
-function parse(source: string, p: HtmlPolicy | null = policy) {
+function parse(source: string, p: HtmlPolicy | null = policy, session: { baseUrl?: string; fileRequestToken?: string } = {}) {
   const warnings: string[] = [];
   const notes: string[] = [];
-  const nodes = parseHtml(source, p, { warn: (m) => warnings.push(m), log: (m) => notes.push(m) });
+  const report = { warn: (m: string) => warnings.push(m), log: (m: string) => notes.push(m) };
+  const nodes = parseHtml(source, p, { report, ...session });
   return { nodes, warnings, notes };
 }
 
@@ -105,6 +107,15 @@ describe('parseHtml', () => {
     expect(notes).toHaveLength(1);
   });
 
+  it('adds the file-request-token to images from the Magid server, not to external ones', () => {
+    const session = { baseUrl: 'http://localhost:8090', fileRequestToken: 'tok' };
+    expect(parse('<img src="http://localhost:8090/bundle/a.png"><img src="https://example.com/b.png">', policy, session).nodes)
+      .toEqual([
+        el('img', [], { src: 'http://localhost:8090/bundle/a.png?file-request-token=tok' }),
+        el('img', [], { src: 'https://example.com/b.png' }),
+      ]);
+  });
+
   it('closes elements left open and ignores stray end tags', () => {
     expect(parse('<b>a<i>b</b>c</i></p>d').nodes).toEqual([el('b', [text('a'), el('i', [text('b')])]), text('cd')]);
     expect(parse('<b>open').nodes).toEqual([el('b', [text('open')])]);
@@ -127,6 +138,21 @@ describe('parseHtml', () => {
 describe('decodeEntities', () => {
   it('leaves unknown entities and bare ampersands alone', () => {
     expect(decodeEntities('&bogus; R&D &nbsp;')).toBe('&bogus; R&D  ');
+  });
+});
+
+describe('withFileRequestToken', () => {
+  const BASE = 'http://localhost:8090';
+
+  it('adds the token to URLs on the server, keeping their query', () => {
+    expect(withFileRequestToken(`${BASE}/a.png?w=2`, BASE, 'tok')).toBe(`${BASE}/a.png?w=2&file-request-token=tok`);
+    expect(withFileRequestToken(`${BASE}/a.png`, `${BASE}/`, 'tok')).toBe(`${BASE}/a.png?file-request-token=tok`);
+  });
+
+  it('leaves other hosts, look-alike hosts and missing tokens alone', () => {
+    expect(withFileRequestToken('https://example.com/a.png', BASE, 'tok')).toBe('https://example.com/a.png');
+    expect(withFileRequestToken('http://localhost:80901/a.png', BASE, 'tok')).toBe('http://localhost:80901/a.png');
+    expect(withFileRequestToken(`${BASE}/a.png`, BASE, null)).toBe(`${BASE}/a.png`);
   });
 });
 

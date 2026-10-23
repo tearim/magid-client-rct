@@ -23,8 +23,13 @@ export function NarrationText({ data, onComplete }: Props) {
   const completionReportedRef = useRef(false);
   const className = useImpliedClasses(data.class);
   const htmlPolicy = useMagidStore((s) => s.htmlPolicy);
+  const baseUrl = useMagidStore((s) => s.baseUrl);
+  const fileRequestToken = useMagidStore((s) => s.fileRequestToken);
   // Tags are parsed once; the typewriter only sees the visible text, so a tag appears whole, never typed out.
-  const { nodes, timeline } = useMemo(() => prepareDisplayText(rawText, htmlPolicy), [rawText, htmlPolicy]);
+  const { nodes, timeline } = useMemo(
+    () => prepareDisplayText(rawText, htmlPolicy, { baseUrl, fileRequestToken }),
+    [rawText, htmlPolicy, baseUrl, fileRequestToken],
+  );
 
   useEffect(() => {
     setSkipTimelines(prefs.getBoolean(PREF_KEYS.NARRATION_IGNORE_TEXT_TL));

@@ -13,7 +13,8 @@ import { hasTimeLineStops, resolveCleanText } from './textTimeline';
 // - An attribute with a value (`id="x"`) not in `allowed-tag-attributes` is removed from the tag (console warning).
 //   `on*` handlers and `javascript:`/`vbscript:` URLs are removed even if listed.
 // - To show a literal tag that would otherwise parse, authors write `&lt;` (in the XML: `&amp;lt;`).
-// - Some allowed tags are transformed (TAG_PROCESSORS), e.g. `<title>` → `<span class="title">` (console log).
+// - Some allowed tags are transformed (TAG_PROCESSORS): `<title>` → `<span class="title">` (console log); an `<img>`
+//   from the Magid server gets the file-request-token.
 
 export interface HtmlPolicy {
   tags: string[];
@@ -35,6 +36,29 @@ export interface HtmlReport {
 }
 
 const consoleReport: HtmlReport = { warn: (m) => console.warn(m), log: (m) => console.log(m) };
+
+export interface HtmlOptions {
+  report?: HtmlReport;
+  // The server's address and the session's token: files from the server (`magid:///…`, already resolved to baseUrl)
+  // need `file-request-token`, since an <img> can't send the Bearer header.
+  baseUrl?: string;
+  fileRequestToken?: string | null;
+}
+
+// `url` with the file-request-token if it points at the Magid server; anything else (external images) is unchanged,
+// so the token never goes to a third party.
+export function withFileRequestToken(url: string, baseUrl: string | undefined, token: string | null | undefined): string {
+  if (!baseUrl || !token) return url;
+  const base = baseUrl.replace(/\/+$/, '');
+  if (url !== base && !url.startsWith(`${base}/`) && !url.startsWith(`${base}?`)) return url;
+  try {
+    const u = new URL(url);
+    u.searchParams.set('file-request-token', token);
+    return u.toString();
+  } catch {
+    return url;
+  }
+}
 
 function splitList(csv: string | undefined): string[] {
   return (csv ?? '').split(',').map((s) => s.trim().toLowerCase()).filter(Boolean);
@@ -236,21 +260,27 @@ export function decodeEntities(s: string): string {
 type ElementNode = Extract<HtmlNode, { type: 'element' }>;
 
 // Allowed tags that can't be rendered as they are, rewritten after their attributes were filtered. The one place that
-// knows about such tags: add new ones here (e.g. an `img` that needs the file-request-token).
-export const TAG_PROCESSORS: Record<string, (el: ElementNode, report: HtmlReport) => ElementNode> = {
+// knows about such tags: add new ones here.
+export const TAG_PROCESSORS: Record<string, (el: ElementNode, report: HtmlReport, options: HtmlOptions) => ElementNode> = {
   // A <title> in the body is invisible (and React 19 hoists it into <head>, retitling the page).
   title: (el, report) => {
     report.log('[magid] <title> in display text is rendered as <span class="title">');
     const className = ['title', el.attributes.class].filter(Boolean).join(' ');
     return { ...el, tag: 'span', attributes: { ...el.attributes, class: className } };
   },
+  img: (el, _report, { baseUrl, fileRequestToken }) => {
+    const src = el.attributes.src;
+    if (!src) return el;
+    return { ...el, attributes: { ...el.attributes, src: withFileRequestToken(src, baseUrl, fileRequestToken) } };
+  },
 };
 
 export function parseHtml(
   source: string,
   policy: HtmlPolicy | null,
-  report: HtmlReport = consoleReport,
+  options: HtmlOptions = {},
 ): HtmlNode[] {
+  const report = options.report ?? consoleReport;
   if (!policy) return source ? [{ type: 'text', text: source }] : [];
 
   const root: HtmlNode[] = [];
@@ -289,7 +319,7 @@ export function parseHtml(
       }
       let el: ElementNode = { type: 'element', tag: token.tag, attributes, children: [] };
       const processor = TAG_PROCESSORS[token.tag];
-      if (processor) el = processor(el, report);
+      if (processor) el = processor(el, report, options);
       children().push(el);
       if (!token.selfClosing && !VOID_TAGS.includes(token.tag)) stack.push({ el, tag: token.tag });
     } else {
@@ -338,9 +368,9 @@ export function truncateHtml(nodes: HtmlNode[], visibleChars: number): HtmlNode[
 export function prepareDisplayText(
   raw: string,
   policy: HtmlPolicy | null,
-  report?: HtmlReport,
+  options?: HtmlOptions,
 ): { nodes: HtmlNode[]; timeline: string } {
-  const parsed = parseHtml(raw, policy, report);
+  const parsed = parseHtml(raw, policy, options);
   const timeline = htmlToText(parsed);
   if (!hasTimeLineStops(timeline)) return { nodes: parsed, timeline };
   const clean = (list: HtmlNode[]): HtmlNode[] =>
