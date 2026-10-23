@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef } from 'react';
 import type { ReactNode } from 'react';
-import { getConsequentalTypingConfig, prepareDisplayText, truncateHtml, type MenuResponse } from '@magid/client-core';
+import { getConsequentalTypingConfig, prepareDisplayText, truncateHtml, type MenuResponse } from '@magiden/client-core';
 import { CommandButton } from './CommandButton';
 import { DetachedElement } from './DetachedElement';
 import { useAudio } from '../hooks/useAudio';

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { hasTimeLineStops, parseTextSegments } from '@magid/client-core';
+import { hasTimeLineStops, parseTextSegments } from '@magiden/client-core';
 
 interface TypewriterOptions {
   typeEachLetter?: boolean;

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { fetchServerStats, javaHashCode } from '../api/magidClient';
-import type { ServerStats, ServerStatsSession } from '@magid/client-core';
+import type { ServerStats, ServerStatsSession } from '@magiden/client-core';
 import { useMagidStore } from '../store/magidStore';
 import styles from './ServerStatsDashboard.module.css';
 

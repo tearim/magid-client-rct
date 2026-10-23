@@ -1,11 +1,11 @@
 import { create } from 'zustand';
-import { MagidClient, type MagidClientState } from '@magid/client-core';
+import { MagidClient, type MagidClientState } from '@magiden/client-core';
 import { syncStylesheets } from '../lib/cssUtils';
 import { CLIENT_TYPE } from '../api/magidClient';
 import { clientConfig } from '../config/clientConfig';
 import { prefs, PREF_KEYS } from '../prefs/prefHelper';
 
-// React adapter over @magid/client-core's MagidClient: the protocol (session, scene/freshness recovery, config, detached
+// React adapter over @magiden/client-core's MagidClient: the protocol (session, scene/freshness recovery, config, detached
 // elements, story loading) lives in the core. This store mirrors the client's state for components and adds what is
 // React-UI only: toasts and the browser side effects (stylesheets, fullscreen).
 

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { parseMagidCss, type CommandResponse } from '@magid/client-core';
+import { parseMagidCss, type CommandResponse } from '@magiden/client-core';
 import { useMagidStore } from '../store/magidStore';
 import { useImpliedClasses } from '../hooks/useImpliedClasses';
 

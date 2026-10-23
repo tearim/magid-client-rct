@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
-import type { ParsedElement } from '@magid/client-core';
+import type { ParsedElement } from '@magiden/client-core';
 import { MagidElement } from './MagidRoot';
 
 interface Props {

@@ -1,6 +1,6 @@
 import { createElement, Fragment } from 'react';
 import type { ReactNode } from 'react';
-import { parseMagidCss, VOID_TAGS, type HtmlNode } from '@magid/client-core';
+import { parseMagidCss, VOID_TAGS, type HtmlNode } from '@magiden/client-core';
 
 // Renders the core's sanitized HTML tree (see magid-core/src/html.ts) as React elements — never via innerHTML.
 // `renderText` renders each text node; `isLast` marks the last one, where a typewriter's reveal edge is.

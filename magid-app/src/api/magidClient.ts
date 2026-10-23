@@ -1,9 +1,9 @@
-// React-app side of @magid/client-core's transport. Story commands go through the core client (see store/magidStore.ts);
+// React-app side of @magiden/client-core's transport. Story commands go through the core client (see store/magidStore.ts);
 // only the admin stats view still calls the server directly.
-import * as core from '@magid/client-core';
-import type { ServerStats } from '@magid/client-core';
+import * as core from '@magiden/client-core';
+import type { ServerStats } from '@magiden/client-core';
 
-export { javaHashCode } from '@magid/client-core';
+export { javaHashCode } from '@magiden/client-core';
 
 // Announced to the server as `client-type`.
 export const CLIENT_TYPE = 'react';

@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import type { VisualResponse } from '@magid/client-core';
+import type { VisualResponse } from '@magiden/client-core';
 
 interface Props {
   data: VisualResponse;

@@ -6,9 +6,11 @@
 set -u
 cd "$(git rev-parse --show-toplevel)" || exit 1
 DOC=CLAUDE.md
-# npm workspaces; paths like `src/...` in $DOC may live in either package.
-PKGS="magid-core magid-app"
-SRCS="magid-core/src magid-app/src"
+# npm workspace with the React app; the client core is a dependency (@magiden/client-core, its own repo).
+PKGS="magid-app"
+SRCS="magid-app/src"
+# The installed core: names from it (MagidClient, ELEMENT_PARSERS, …) are not reported as missing.
+CORE="node_modules/@magiden/client-core/src"
 # Sibling server repo; names that live there (protocol classes, MAGID-XML-DSL.md) are not reported as missing.
 SERVER="${MAGID_SERVER_REPO:-$(dirname "$PWD")/com.zarterstein}"
 
@@ -37,6 +39,7 @@ echo "== Identifiers named in $DOC not found in $SRCS:"
 missing=0
 for id in $(grep -oE '`[A-Za-z_][A-Za-z0-9_]{3,}`' "$DOC" | tr -d '`' | grep -E '[a-z][A-Z]|^[A-Z][A-Z0-9_]+$' | sort -u); do
   grep -rqw -- "$id" $SRCS && continue
+  [ -d "$CORE" ] && grep -rqw -- "$id" "$CORE" && continue
   [ -d "$SERVER" ] && grep -rqw --include=*.java -- "$id" "$SERVER/story-server" "$SERVER/core/src/main" 2>/dev/null && continue
   echo "   $id"; missing=1
 done

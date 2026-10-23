@@ -61,36 +61,40 @@ The code grew from an original "React blueprint" document that is no longer in t
 (sessions/auth, detached elements, stats dashboard, toasts, typing styles, etc. were added later). Read the code
 directly.
 
-### Two packages (npm workspaces)
+### The client core: `@magiden/client-core` (separate repo)
 
-- **`magid-core/`** — `@magid/client-core`: the framework-free client. No React, no DOM: its `tsconfig.json` has no `DOM`
-  lib and its tests run in Node, so a stray `window`/`document` fails the type-check or the tests. Consumed as TS source
-  (`exports` → `src/index.ts`); everything public is re-exported from `index.ts`.
-- **`magid-app/`** — the React app; imports protocol types and pure helpers from `@magid/client-core`.
+Everything protocol-related lives in **`@magiden/client-core`**: GitHub `tearim/magid-client-core`, locally
+`C:\developer\magid-client-core` (extracted from this repo with its history on 2026-10-23). It is framework-free (no
+React, no DOM) and has its own `CLAUDE.md`, `OPEN-ISSUES.md` and tests; **protocol, parsing and presentation-semantics
+changes are made there, never here.** This repo depends on a tagged release
+(`magid-app/package.json`: `github:tearim/magid-client-core#vX.Y.Z`, later the npm version); `npm install` clones and
+builds it into `node_modules/@magiden/client-core` (`dist/` + `src/` for reading). To try an unreleased core change
+here, `npm link` it or temporarily depend on `file:../../magid-client-core`, then go back to a tag.
 
-A migration is in progress (owner decisions, 2026-10-21). Done: pure helpers, the transport (`transport.ts`: injectable
-`fetch`, `clientType` announced as `client-type`) and the engine `MagidClient` (`client.ts`, tests in `client.test.ts`):
-`send`/`selectStory`/`resetStory`, **one command at a time** (queue), session/scene/freshness recovery, `notice` and
-`viewport` events instead of toasts/fullscreen, `stylesheets` as state, `can(command)` (see "Server settings in
-config" below), sanitized HTML in display text (`html.ts`). The React store is now a thin adapter over it. Next: a `@magid/client-core/dom` entry (stylesheets, fullscreen, audio)
-in the same package — one library, not several — and a vanilla example.
-Keep the core free of anything a non-React renderer couldn't use.
+What the app gets from it (details in the core's `CLAUDE.md`):
+- `MagidClient`: transport (`clientType` `react`), session, scene/freshness recovery, config, detached elements, story
+  loading, one command at a time, `can(command)` from the server's `allowed-commands`, `stylesheets`/`htmlPolicy` as state.
+- Parsed response elements (`ParsedElement`, key-driven `ELEMENT_PARSERS`), `magid:///` anchors resolved to `baseUrl`.
+- Presentation semantics: `parseMagidCss`, `getConsequentalTypingConfig`, `parseTextSegments`/`resolveCleanText`,
+  `applyImpliedClasses`, `prepareDisplayText`/`truncateHtml` (sanitized HTML tree, `TAG_PROCESSORS`, image token).
+
+Keep anything a non-React renderer would also need out of this repo; if the app needs something new of that kind, it
+goes into the core first.
 
 ## Commands
 
-Install once from the **repo root** (one `package-lock.json` and `node_modules` there); root scripts fan out:
+Install once from the **repo root**; root scripts run in the `magid-app` workspace:
 
 ```powershell
-npm install          # all workspaces
+npm install          # also clones + builds @magiden/client-core at the pinned tag
 npm run dev          # app dev server w/ HMR, default http://localhost:5173
 npm run build        # app: tsc -b && vite build
-npm run test         # vitest run in every workspace
-npm run lint         # eslint in every workspace
-npm run typecheck    # core: tsc --noEmit (no DOM); app: tsc -b
+npm run test         # vitest (the app has no tests of its own yet; the core's are in its repo)
+npm run lint         # eslint
+npm run typecheck    # app: tsc -b
 ```
 
-Inside a package (`cd magid-core` or `cd magid-app`) the usual `npm run test|lint|test:watch` work too.
-Run a single test file: `cd magid-core; npx vitest run src/elementFactory.test.ts`
+Inside `magid-app` the usual `npm run test|lint|test:watch` work too.
 Run tests matching a name: `npx vitest run -t "parses a menu response"`
 
 Default dev target server (Magid backend) is `http://localhost:8090`; the client's own dev
@@ -98,49 +102,13 @@ server defaults to `http://localhost:5173`.
 
 ## Architecture
 
-### Response parsing is key-driven, not type-driven
-
-The server sends one JSON object per response; a single object can carry multiple recognized
-keys at once (e.g. both `narration` and `menu`), and some element types have multiple valid key
-aliases (`menu`/`menu-name`, `text`/`narration`, `command`/`command-name`/`command-text`, etc.).
-`magid-core/src/elementFactory.ts` holds `ELEMENT_PARSERS`, the single lookup table mapping every known
-JSON key to a parser producing a `ParsedElement`. This is intentionally the *one* place that
-knows about element types — add new protocol keys/aliases only there, then extend the
-`ParsedElement` union in the same file and `magid-core/src/protocol.ts`. `responses` arrays recurse
-through `parseResponse` and collapse into a single `{ type: 'responses' }` node.
-
-`resolveAnchors` (`magid-core/src/anchors.ts`) and `resolveStringsInObject` rewrite every `magid://` string anchor to the active
-`baseUrl` at parse time, recursively, before any component sees the data. This is a plain prefix replacement, exactly like
-the server's `XmlBundleLoader`, so the valid form is `magid:///path` (three slashes: the third one starts the path).
-
-### Protocol engine: `MagidClient` (`magid-core/src/client.ts`); the store is only an adapter
-
-`MagidClient` implements the client-side protocol; renderers never re-implement it:
-- **Config elements** (`css-files` / `css-files-{clientType}` + arbitrary vars) are applied immediately and stripped from
-  what gets rendered. Stylesheet URLs become `state.stylesheets`; vars go to `state.envVars`.
-- **Session elements** carry `session-id`/`file-request-token`/available XMLs/server metadata; applied in a pre-pass so
-  the token is there before same-batch CSS loads. The session id goes out as a `Bearer` header and is persisted through
-  the injected `KeyValueStorage` (`STORAGE_KEYS`).
-- **Detached elements** (`type: 'detached'`) never render standalone. They are attached to every `menu` of the same
-  response batch (`detached-elements`) — `prepend`, `append`, or `by-anchor` (matched against a `text-anchor` in the
-  menu description via `renderTextWithAnchors`). A new menu resets `userInputs` to the batch's `input-value`s.
-- **Scene sync / freshness protocol**: `currentScene` and the `freshness-key` var go out with every command. On a
-  `status: 'error'` payload the client distinguishes a stale session (drops it and opens a fresh one; the action is not
-  retried), a blocking `E01*` error (`connectivityBlockedError`), a scene mismatch (action dismissed, current menu
-  re-fetched, `notice`), or a freshness-key mismatch (same command retried once with the corrected key).
-- **Story loading** (`selectStory` = `set-xml`, `resetStory` = `reload-xml`) first drops stylesheets, vars, scene and
-  inputs. Commands run **one at a time** (queue).
-- **Server settings in config** (not story vars, kept across story loads, cleared on session end / server change):
-  - `allowed-commands` (`group:action,action;group:action`, parsed by `capabilities.ts`) → `state.allowedCommands`.
-    `can(command)` tells the UI what to offer and the client refuses disallowed commands locally (no request). Only the
-    server actions in `SERVER_ACTIONS` are gated; story commands always pass. Not announced yet = everything allowed.
-    The operator's `disabledCommands` (`'reload-xml'` or `'xml:reload-xml'`) always win.
-  - `allowed-tags` / `allowed-tag-attributes` (comma-separated) → `state.htmlPolicy`; see "HTML in display text".
+### The store is only an adapter
 
 `magid-app/src/store/magidStore.ts` creates the app's `magidClient` (`clientType` `react`, `localStorage` via `prefs`,
 `disabledCommands` from `clientConfig`), mirrors `getState()` into zustand, and handles what is UI-only: `notice` →
 toasts, `viewport` → fullscreen (unless the user pref says no), `stylesheets` → `syncStylesheets`. Components keep
-using `useMagidStore`; protocol changes belong in the core, never in the store or components.
+using `useMagidStore` (`can` via `useMagidStore((s) => s.can('set-xml'))` re-renders when the server's list changes);
+protocol changes belong in the core, never in the store or components.
 
 ### Component/UI flow
 
@@ -151,67 +119,42 @@ active scene) → `MagidRoot` (elements to render). `MagidRoot`/`MagidElement` d
 `VisualFade`, `ResponsesContainer`, `DetachedElement`). `OptionsModal` holds runtime prefs
 (server URL, XML selection, toggles, volume); `ServerStatsDashboard` is an admin/debug view over
 `server-stats`. `ToastContainer` renders the store's `toasts` queue (used for out-of-sync/error
-notices, not routine narration).
+notices, not routine narration). The Reset button, the XML picker and Server Stats are shown only when `can(…)` allows
+`reload-xml`, `set-xml` and `server-stats`.
 
-`DetachedElement` follows the same single-source-of-truth pattern as `elementFactory`:
+`DetachedElement` follows the same single-source-of-truth pattern as the core's `ELEMENT_PARSERS`:
 `DETACHED_ELEMENT_RENDERERS` maps `element-type` → renderer (currently just `input` →
-`InputElement`). Add new detached element types there.
+`InputElement`). Add new detached element types there. `by-anchor` elements are placed via `renderTextWithAnchors`.
 
 ### CSS handling
 
 Two independent CSS mechanisms exist — don't confuse them:
 - `magid-app/src/lib/cssUtils.ts` (`syncStylesheets` → `injectStyleLink`/`clearInjectedStylesheets`) fetches server-hosted
-  stylesheets (`config.css-files`) as `<link>` tags, using a blob URL when an auth token must be
+  stylesheets (the core's `state.stylesheets`) as `<link>` tags, using a blob URL when an auth token must be
   attached (since `<link href>` can't carry headers).
-- `magid-core/src/magidCss.ts` (`parseMagidCss`) converts inline per-element `css`/`menu-css` strings
-  (web CSS syntax) into a `MagidStyle` (plain camelCased record: a React `style` prop or `Object.assign(el.style, …)`).
-  Bare `left`/`top`/… numbers get `px` and imply `position: absolute`. `-mg-abs-x`/`-mg-abs-y` act like `left`/`top`
-  and win over them (as in the JFX client). Window-level `-mg-*` (`-mg-window-*`, `-mg-resizable`, `-mg-screen`) and
-  JavaFX-only `-fx-*` properties are dropped.
+- The core's `parseMagidCss` turns inline per-element `css` strings into a `style` object (incl. `-mg-abs-x`/`-y`).
+  `MenuScene` still applies `menu-css` raw via `style.cssText` and handles `-mg-window-width/height` itself.
 
-### Typewriter animation
+### Display text: typewriter, typing styles, HTML
 
-Any display text containing `DCSTP_{ms}@{text}` segments triggers progressive rendering.
-`magid-core/src/textTimeline.ts` parses these into cumulative-offset segments; `useTypewriter` drives
-the reveal over time. `MenuScene` gates detached "append" elements on `typingComplete` so they
-don't appear mid-typing.
+`useTypewriter` (`magid-app/src/hooks/useTypewriter.ts`) reveals text over time from the core's `DCSTP_` timeline and
+typing config (classes `type-by-letter-…`, `type-by-word-…`, `animation-resets-…`). `MenuScene` gates detached "append"
+elements on `typingComplete` so they don't appear mid-typing.
 
-Per-element typing styles come from CSS class names on narration elements, parsed by
-`getConsequentalTypingConfig` (`magid-core/src/typingConfig.ts`):
-- `type-by-letter-{ms|slow|normal|fast|rapid}` / `type-by-word-{…}`: letter- or word-wise reveal
-  (named speeds: slow 30, normal 20, fast 10, rapid 5 ms).
-- `animation-resets-{ms}`: restart the animation every N ms (plural "resets").
-
-**HTML in display text** (narration and menu description): `magid-core/src/html.ts` parses the text once with a small
-state machine into a sanitized tree (`HtmlNode[]`); `magid-app/src/lib/renderHtml.tsx` builds React elements from it
-(never `innerHTML`). Without `allowed-tags` (`htmlPolicy` null) nothing is parsed: plain text as before. Otherwise:
-- **Prose, not a tag** (rendered as text, no warning): anything not well-formed (`a < b`, `a<b!`, a trailing `<b`), and a
-  would-be tag with a bare word that isn't an allowed attribute (`a<b and c>d`).
-- **Tag not in `allowed-tags`**: removed, content kept, console warning.
-- **Attribute with a value not in `allowed-tag-attributes`** (`id="x"`): removed from the tag, console warning. `on*` and
-  `javascript:`/`vbscript:` URLs are always removed.
-- A literal tag that would otherwise parse is written `&lt;b>` (in story XML: `&amp;lt;b>`).
-- **Transformed tags** (`TAG_PROCESSORS` in `html.ts`, the one place for them): `<title>` → `<span class="title">`
-  (console log), since a body `<title>` is invisible and React 19 hoists it into `<head>`. `<img>` from the Magid server
-  (`src` starting with `baseUrl`, i.e. a resolved `magid:///…`) gets `file-request-token` (`withFileRequestToken`), since
-  an image request can't carry the Bearer header; external images are left alone so the token never leaves the server.
-
-The components pass `{ baseUrl, fileRequestToken }` to `prepareDisplayText` and re-parse when they change. `style` goes
-through `parseMagidCss`. `prepareDisplayText` hands the typewriter only the visible text (with DCSTP_ markers) and
-`truncateHtml` cuts the tree by visible characters, so tags are never typed: an element appears whole with its first
-character. The last-letters/words effects apply to the last text node only, the isolating ones to every text node.
+Narration and menu descriptions go through the core's `prepareDisplayText(raw, htmlPolicy, { baseUrl, fileRequestToken })`
+(memoized; re-parsed when those change). The typewriter animates only the visible text, `truncateHtml` cuts the tree by
+visible characters (tags are never typed out), and `magid-app/src/lib/renderHtml.tsx` builds React elements from the
+tree (never `innerHTML`; `class` → `className`, `style` → `parseMagidCss`). The last-letters/words effects apply to the
+last text node only, the isolating ones to every text node. The HTML rules themselves (what's prose, what's removed, the
+`<title>`/`<img>` processors) are documented in the core.
 
 `renderWithBreaks` (`magid-app/src/lib/renderText.tsx`) renders the text with `TypingStyle` (`byLetter`, `byWord`, and
 `…Isolating` variants) and keeps module-level reset bookkeeping, because it is a plain function and must not use hooks.
 
-**Implied classes:** server vars prefixed `implied-classes-of:` (e.g.
-`<client-var name="implied-classes-of: hermit-talking*, seer-talking" value="type-by-word-50 …"/>`) add classes to
-elements whose class string matches. Patterns are comma-separated and match the **whole** class string: `x` equals,
-`x*` starts with, `*x` ends with, `*x*` contains. No chaining (implied classes don't imply further ones), no duplicates.
-The pure logic is `applyImpliedClasses` (`magid-core/src/impliedClasses.ts`); components use the `useImpliedClasses` hook, which
-re-derives on `envVars` changes and never mutates `data`. Applied to narration, menu (`menu-class`, also on `<main>`),
-command buttons (`command-class`) and input elements. `sendCommand` clears all `envVars` before `reload-xml`/`set-xml`,
-since the new story's config (incl. `freshness-key`) arrives with the following response.
+**Implied classes:** components use the `useImpliedClasses` hook over the core's `applyImpliedClasses` (vars
+`implied-classes-of: pattern, …`; whole-class-string patterns `x`, `x*`, `*x`, `*x*`; no chaining). The hook re-derives
+on `envVars` changes and never mutates `data`. Applied to narration, menu (`menu-class`, also on `<main>`), command
+buttons (`command-class`) and input elements.
 
 ### Preferences
 
