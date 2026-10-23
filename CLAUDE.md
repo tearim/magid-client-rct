@@ -184,9 +184,13 @@ Per-element typing styles come from CSS class names on narration elements, parse
 
 **HTML in display text** (narration and menu description): `magid-core/src/html.ts` parses the text once with a small
 state machine into a sanitized tree (`HtmlNode[]`); `magid-app/src/lib/renderHtml.tsx` builds React elements from it
-(never `innerHTML`). Without `allowed-tags` (`htmlPolicy` null) nothing is parsed: plain text as before. Tags not in
-`allowed-tags` are removed with their content kept; attributes not in `allowed-tag-attributes` are removed from allowed
-tags; `on*` and `javascript:`/`vbscript:` URLs are always removed; each removal logs a console warning. `style` goes
+(never `innerHTML`). Without `allowed-tags` (`htmlPolicy` null) nothing is parsed: plain text as before. Otherwise:
+- **Prose, not a tag** (rendered as text, no warning): anything not well-formed (`a < b`, `a<b!`, a trailing `<b`), and a
+  would-be tag with a bare word that isn't an allowed attribute (`a<b and c>d`).
+- **Tag not in `allowed-tags`**: removed, content kept, console warning.
+- **Attribute with a value not in `allowed-tag-attributes`** (`id="x"`): removed from the tag, console warning. `on*` and
+  `javascript:`/`vbscript:` URLs are always removed.
+- A literal tag that would otherwise parse is written `&lt;b>` (in story XML: `&amp;lt;b>`). `style` goes
 through `parseMagidCss`. `prepareDisplayText` hands the typewriter only the visible text (with DCSTP_ markers) and
 `truncateHtml` cuts the tree by visible characters, so tags are never typed: an element appears whole with its first
 character. The last-letters/words effects apply to the last text node only, the isolating ones to every text node.

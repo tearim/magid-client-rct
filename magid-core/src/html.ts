@@ -6,9 +6,13 @@ import { hasTimeLineStops, resolveCleanText } from './textTimeline';
 // tag appears whole as soon as its first character is due — `<b` never flashes on screen.
 //
 // - No policy (the server announced no `allowed-tags`): plain text, nothing is parsed — as before HTML support.
+// - Not a tag, but prose: anything that isn't well-formed (`a < b`, `a<b!`, an unterminated `<b` at the end), and a
+//   would-be tag with a bare word that isn't an allowed attribute (`a<b and c>d`: `and`, `c` have no `=value`).
+//   Rendered as text, no warning.
 // - A tag not in `allowed-tags` is removed and its content kept (console warning).
-// - An attribute not in `allowed-tag-attributes` is removed from an allowed tag (console warning). `on*` handlers and
-//   `javascript:`/`vbscript:` URLs are removed even if listed.
+// - An attribute with a value (`id="x"`) not in `allowed-tag-attributes` is removed from the tag (console warning).
+//   `on*` handlers and `javascript:`/`vbscript:` URLs are removed even if listed.
+// - To show a literal tag that would otherwise parse, authors write `&lt;` (in the XML: `&amp;lt;`).
 
 export interface HtmlPolicy {
   tags: string[];
@@ -37,7 +41,8 @@ export function parseHtmlPolicy(tags: string | undefined, attributes: string | u
 
 type Token =
   | { kind: 'text'; text: string }
-  | { kind: 'start'; tag: string; attributes: [string, string][]; selfClosing: boolean }
+  // value null: a bare attribute (`<b and>`); raw: the tag's source text, for when it turns out to be prose.
+  | { kind: 'start'; tag: string; attributes: [string, string | null][]; selfClosing: boolean; raw: string }
   | { kind: 'end'; tag: string };
 
 const S = {
@@ -72,21 +77,23 @@ export function tokenizeHtml(source: string): Token[] {
   let tag = '';
   let attrName = '';
   let attrValue = '';
-  let attributes: [string, string][] = [];
+  let attrHasValue = false;
+  let attributes: [string, string | null][] = [];
 
   const flushText = () => {
     if (text) tokens.push({ kind: 'text', text });
     text = '';
   };
   const pushAttr = () => {
-    if (attrName) attributes.push([attrName.toLowerCase(), attrValue]);
+    if (attrName) attributes.push([attrName.toLowerCase(), attrHasValue ? attrValue : null]);
     attrName = '';
     attrValue = '';
+    attrHasValue = false;
   };
   const emitStart = (selfClosing: boolean) => {
     pushAttr();
     flushText();
-    tokens.push({ kind: 'start', tag: tag.toLowerCase(), attributes, selfClosing });
+    tokens.push({ kind: 'start', tag: tag.toLowerCase(), attributes, selfClosing, raw: source.slice(tagStart, i + 1) });
     state = S.Text;
   };
 
@@ -154,14 +161,14 @@ export function tokenizeHtml(source: string): Token[] {
         break;
       case S.AttrName:
         if (isSpace(c)) state = S.AfterAttrName;
-        else if (c === '=') state = S.BeforeAttrValue;
+        else if (c === '=') { attrHasValue = true; state = S.BeforeAttrValue; }
         else if (c === '/') { pushAttr(); state = S.SelfClosing; }
         else if (c === '>') emitStart(false);
         else attrName += c;
         break;
       case S.AfterAttrName:
         if (isSpace(c)) break;
-        if (c === '=') state = S.BeforeAttrValue;
+        if (c === '=') { attrHasValue = true; state = S.BeforeAttrValue; }
         else if (c === '>') emitStart(false);
         else if (c === '/') { pushAttr(); state = S.SelfClosing; }
         else { pushAttr(); attrName = c; state = S.AttrName; }
@@ -240,13 +247,17 @@ export function parseHtml(
     if (token.kind === 'text') {
       appendText(decodeEntities(token.text));
     } else if (token.kind === 'start') {
+      if (token.attributes.some(([name, value]) => value === null && !policy.attributes.includes(name))) {
+        appendText(decodeEntities(token.raw)); // prose that looks like a tag: `a<b and c>d`
+        continue;
+      }
       if (!policy.tags.includes(token.tag)) {
         warn(`[magid] <${token.tag}> is not in allowed-tags; the tag was removed, its content kept`);
         continue;
       }
       const attributes: Record<string, string> = {};
       for (const [name, rawValue] of token.attributes) {
-        const value = decodeEntities(rawValue);
+        const value = decodeEntities(rawValue ?? '');
         if (!policy.attributes.includes(name)) {
           warn(`[magid] attribute "${name}" on <${token.tag}> is not in allowed-tag-attributes; removed`);
         } else if (name.startsWith('on') || SCRIPT_URL.test(value)) {

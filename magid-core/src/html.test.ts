@@ -70,13 +70,30 @@ describe('parseHtml', () => {
       .toEqual([text('a'), el('img', [], { src: 'magid.png' }), text('b'), el('span'), text('c')]);
   });
 
-  it('keeps boolean and unquoted attributes', () => {
-    expect(parse('<span class=big style>x</span>').nodes).toEqual([el('span', [text('x')], { class: 'big', style: '' })]);
+  it('keeps unquoted attributes and empty values', () => {
+    expect(parse('<span class=big style="">x</span>').nodes).toEqual([el('span', [text('x')], { class: 'big', style: '' })]);
   });
 
   it('keeps anything that is not a well-formed tag as text', () => {
     expect(parse('a < b, 1<2, <3, <b').nodes).toEqual([text('a < b, 1<2, <3, <b')]);
     expect(parse('x <b class="y').nodes).toEqual([text('x <b class="y')]);
+  });
+
+  it('keeps a would-be tag with bare words that are not allowed attributes as prose, without warning', () => {
+    const { nodes, warnings } = parse('a<b and c>d</b> e');
+    expect(nodes).toEqual([text('a<b and c>d e')]);
+    expect(warnings).toEqual([]);
+    expect(parse('if x<u or y>z').nodes).toEqual([text('if x<u or y>z')]);
+  });
+
+  it('keeps an allowed bare attribute', () => {
+    expect(parse('<span style>x</span>').nodes).toEqual([el('span', [text('x')], { style: '' })]);
+  });
+
+  it('removes attributes with a value even when a bare word makes another tag prose', () => {
+    const { nodes, warnings } = parse('<b id="1">x</b> 1<b c>');
+    expect(nodes).toEqual([el('b', [text('x')]), text(' 1<b c>')]);
+    expect(warnings).toHaveLength(1);
   });
 
   it('closes elements left open and ignores stray end tags', () => {
