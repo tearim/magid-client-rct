@@ -1,4 +1,4 @@
-# Open issues
+Pl# Open issues
 
 Problems found by AI agents while working in this repo, left **unfixed on purpose** for the owner to resolve.
 Agents add new findings here instead of fixing code they weren't asked to touch (see `CLAUDE.md` → "Working with the owner").
