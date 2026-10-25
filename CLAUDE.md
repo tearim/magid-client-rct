@@ -66,10 +66,10 @@ directly.
 Everything protocol-related lives in **`@magiden/client-core`**: GitHub `tearim/magid-client-core`, locally
 `C:\developer\magid-client-core` (extracted from this repo with its history on 2026-10-23). It is framework-free (no
 React, no DOM) and has its own `CLAUDE.md`, `OPEN-ISSUES.md` and tests; **protocol, parsing and presentation-semantics
-changes are made there, never here.** This repo depends on a tagged release
-(`magid-app/package.json`: `github:tearim/magid-client-core#vX.Y.Z`, later the npm version); `npm install` clones and
-builds it into `node_modules/@magiden/client-core` (`dist/` + `src/` for reading). To try an unreleased core change
-here, `npm link` it or temporarily depend on `file:../../magid-client-core`, then go back to a tag.
+changes are made there, never here.** This repo depends on the npm release (`magid-app/package.json`:
+`"@magiden/client-core": "^X.Y.Z"`); `npm install` puts it in `node_modules/@magiden/client-core` (`dist/` + `src/` for
+reading). To try an unreleased core change here, `npm link` it or temporarily depend on `file:../../magid-client-core`,
+then go back to the published version.
 
 What the app gets from it (details in the core's `CLAUDE.md`):
 - `MagidClient`: transport (`clientType` `react`), session, scene/freshness recovery, config, detached elements, story
@@ -86,7 +86,7 @@ goes into the core first.
 Install once from the **repo root**; root scripts run in the `magid-app` workspace:
 
 ```powershell
-npm install          # also clones + builds @magiden/client-core at the pinned tag
+npm install          # also installs @magiden/client-core from npm
 npm run dev          # app dev server w/ HMR, default http://localhost:5173
 npm run build        # app: tsc -b && vite build
 npm run test         # vitest (the app has no tests of its own yet; the core's are in its repo)
