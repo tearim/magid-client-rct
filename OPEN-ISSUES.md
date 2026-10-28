@@ -21,6 +21,13 @@ Delete an entry once it's resolved. Each entry: what's wrong, where, why it matt
   markers the comparison never holds and `appendEls` stay hidden. (Same before HTML support, with `rawDesc`.)
 - Fix idea: compare with `resolveCleanText(timeline)`, as `NarrationText` does.
 
+### R6. `by-anchor` placeholders are typed out letter by letter in menu descriptions (2026-10-28, from reading the code)
+- The server writes the anchor (`INPUT_ANCHOR_<uuid>`, 49 characters) into the description text. The typewriter reveals
+  it like prose, and `renderTextWithAnchors` (`renderText.tsx`) only swaps an anchor once it is complete, so the
+  placeholder appears character by character before the input replaces it. The same problem the HTML tags had.
+- Fix idea: in the core, treat a known anchor as one atomic unit in the timeline (zero or one visible character), the way
+  `truncateHtml` treats tags; then `MenuScene` renders it whole. Needs the core to know the batch's anchors.
+
 ## Tooling / hygiene
 
 ### H1. Lint baseline (magid-app): 15 errors, 1 warning (2026-10-21; was 26 before R1, the core extraction and the store rewrite)
