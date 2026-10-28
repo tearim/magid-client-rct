@@ -115,16 +115,25 @@ protocol changes belong in the core, never in the store or components.
 `App.tsx` decides which top-level screen to show based on store state, not routing (no router
 in this app): `WelcomePage` (no server session yet) → `ServerLobbyPage` (session established, no
 active scene) → `MagidRoot` (elements to render). `MagidRoot`/`MagidElement` dispatches
-`ParsedElement`s to focused renderers (`MenuScene`, `NarrationText`, `CommandButton`,
-`VisualFade`, `ResponsesContainer`, `DetachedElement`). `OptionsModal` holds runtime prefs
+`ParsedElement`s to focused renderers (`MenuScene`, `NarrationText`, `ImageElement`, `CommandButton`,
+`VisualFade`, `ResponsesContainer`, `DetachedElement`). `ResponsesContainer` and `MagidRoot` reveal narrations one after
+another (each waits for the previous one's `onComplete`, unless it has a `defer`); standalone images (`ImageElement`)
+take their turn the same way. `OptionsModal` holds runtime prefs
 (server URL, XML selection, toggles, volume); `ServerStatsDashboard` is an admin/debug view over
 `server-stats`. `ToastContainer` renders the store's `toasts` queue (used for out-of-sync/error
 notices, not routine narration). The Reset button, the XML picker and Server Stats are shown only when `can(…)` allows
 `reload-xml`, `set-xml` and `server-stats`.
 
 `DetachedElement` follows the same single-source-of-truth pattern as the core's `ELEMENT_PARSERS`:
-`DETACHED_ELEMENT_RENDERERS` maps `element-type` → renderer (currently just `input` →
-`InputElement`). Add new detached element types there. `by-anchor` elements are placed via `renderTextWithAnchors`.
+`DETACHED_ELEMENT_RENDERERS` maps `element-type` → renderer (`input` → `InputElement`, `image` → `MagidImage`). Add new
+detached element types there. The core hands each detached element to the narration whose text holds its anchor, else
+to the menu; `by-anchor` elements are rendered at their anchor node (see below), `prepend`/`append` around the menu
+description.
+
+**Images** (`magid-app/src/components/MagidImage.tsx`): `MagidImage` draws an author's `<img>`, detached or standalone,
+with the author's `class`/`css` on the image itself, `alt`, `width`/`height` (a bare number is pixels) and the
+file-request-token for server files (added at render time; it can change). `ImageElement` wraps a standalone one.
+`<show image="…">` is different: an image belonging to the narration, whose class and css stay on the narration.
 
 ### CSS handling
 
@@ -141,10 +150,12 @@ Two independent CSS mechanisms exist — don't confuse them:
 typing config (classes `type-by-letter-…`, `type-by-word-…`, `animation-resets-…`). `MenuScene` gates detached "append"
 elements on `typingComplete` so they don't appear mid-typing.
 
-Narration and menu descriptions go through the core's `prepareDisplayText(raw, htmlPolicy, { baseUrl, fileRequestToken })`
-(memoized; re-parsed when those change). The typewriter animates only the visible text, `truncateHtml` cuts the tree by
-visible characters (tags are never typed out), and `magid-app/src/lib/renderHtml.tsx` builds React elements from the
-tree (never `innerHTML`; `class` → `className`, `style` → `parseMagidCss`). The last-letters/words effects apply to the
+Narration and menu descriptions go through the core's
+`prepareDisplayText(raw, htmlPolicy, { baseUrl, fileRequestToken, anchors })` (memoized; re-parsed when those change;
+`anchors` are the `text-anchor`s of the element's detached elements). The typewriter animates only the visible text,
+`truncateHtml` cuts the tree by visible characters (tags and anchors are never typed out; an anchor is one character),
+and `magid-app/src/lib/renderHtml.tsx` builds React elements from the tree (never `innerHTML`; `class` → `className`,
+`style` → `parseMagidCss`; anchor nodes via its `renderAnchor` callback → `DetachedElement`). The last-letters/words effects apply to the
 last text node only, the isolating ones to every text node. The HTML rules themselves (what's prose, what's removed, the
 `<title>`/`<img>` processors) are documented in the core.
 

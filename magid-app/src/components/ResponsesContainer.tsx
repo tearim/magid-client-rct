@@ -13,8 +13,13 @@ function initialUnlocked(elements: ParsedElement[]): number {
   return firstBlocker === -1 ? elements.length : firstBlocker + 1;
 }
 
+// Standalone images take their turn among the narrations.
+function isQueued(el: ParsedElement): el is Extract<ParsedElement, { type: 'narration' | 'image' }> {
+  return el.type === 'narration' || el.type === 'image';
+}
+
 function getNarrationDeferMs(el: ParsedElement): number {
-  if (el.type !== 'narration') return 0;
+  if (!isQueued(el)) return 0;
 
   const deferMs = el.data.defer ? parseInt(el.data.defer, 10) : 0;
   return Number.isFinite(deferMs) ? deferMs : 0;
@@ -62,7 +67,7 @@ export function ResponsesContainer({ elements }: Props) {
         const isBlockingVisual =
           el.type === 'visual' && el.data['transition-blocking'] === 'true';
 
-        if (el.type !== 'narration') {
+        if (!isQueued(el)) {
           return (
             <MagidElement
               key={i}

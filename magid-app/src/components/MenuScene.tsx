@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useRef } from 'react';
-import type { ReactNode } from 'react';
 import { getConsequentalTypingConfig, prepareDisplayText, truncateHtml, type MenuResponse } from '@magiden/client-core';
 import { CommandButton } from './CommandButton';
 import { DetachedElement } from './DetachedElement';
@@ -8,7 +7,7 @@ import { useTypewriter } from '../hooks/useTypewriter';
 import { prefs, PREF_KEYS } from '../prefs/prefHelper';
 import { useMagidCommand } from '../hooks/useMagidCommand';
 import { useMagidStore } from '../store/magidStore';
-import { renderTextWithAnchors } from '../lib/renderText';
+import { renderWithBreaks } from '../lib/renderText';
 import { renderHtml } from '../lib/renderHtml';
 import { useImpliedClasses } from '../hooks/useImpliedClasses';
 
@@ -26,24 +25,24 @@ export function MenuScene({ data }: Props) {
   const rawDesc = data['menu-description'] ?? '';
   const htmlPolicy = useMagidStore((s) => s.htmlPolicy);
   const baseUrl = useMagidStore((s) => s.baseUrl);
+  const detachedElements = data['detached-elements'];
+  const anchorEls = useMemo(
+    () => (detachedElements ?? []).filter((d) => d.detached === 'by-anchor' && d['text-anchor']),
+    [detachedElements],
+  );
+  const anchors = useMemo(() => anchorEls.map((d) => d['text-anchor'] ?? ''), [anchorEls]);
+  // Anchors become single units of the timeline, so a by-anchor element appears whole when its turn comes.
   const { nodes, timeline } = useMemo(
-    () => prepareDisplayText(rawDesc, htmlPolicy, { baseUrl, fileRequestToken }),
-    [rawDesc, htmlPolicy, baseUrl, fileRequestToken],
+    () => prepareDisplayText(rawDesc, htmlPolicy, { baseUrl, fileRequestToken, anchors }),
+    [rawDesc, htmlPolicy, baseUrl, fileRequestToken, anchors],
   );
   const menuClass = useImpliedClasses(data['menu-class']);
   const consequentalTypingConfig = getConsequentalTypingConfig(menuClass);
   const displayed = useTypewriter(timeline, skipTimelines, consequentalTypingConfig);
   const typingComplete = displayed === timeline;
 
-  const detachedElements = data['detached-elements'] ?? [];
-  const prependEls = detachedElements.filter((d) => d.detached === 'prepend');
-  const appendEls = detachedElements.filter((d) => d.detached === 'append');
-  const anchors: Record<string, ReactNode> = {};
-  for (const d of detachedElements) {
-    if (d.detached === 'by-anchor' && d['text-anchor']) {
-      anchors[d['text-anchor']] = <DetachedElement data={d} />;
-    }
-  }
+  const prependEls = (detachedElements ?? []).filter((d) => d.detached === 'prepend');
+  const appendEls = (detachedElements ?? []).filter((d) => d.detached === 'append');
 
   const rawAudioSrc = data['menu-background-music'];
   let audioSrc = rawAudioSrc;
@@ -80,7 +79,14 @@ export function MenuScene({ data }: Props) {
       {rawDesc && (
         <div ref={descRef} className="magid-menu-description">
           {prependEls.map((d, i) => <DetachedElement key={`prepend-${i}`} data={d} />)}
-          {renderHtml(truncateHtml(nodes, displayed.length), (text) => renderTextWithAnchors(text, anchors))}
+          {renderHtml(
+            truncateHtml(nodes, displayed.length),
+            (text) => renderWithBreaks(text),
+            (anchor) => {
+              const d = anchorEls.find((e) => e['text-anchor'] === anchor);
+              return d && <DetachedElement data={d} />;
+            },
+          )}
           {typingComplete && appendEls.map((d, i) => <DetachedElement key={`append-${i}`} data={d} />)}
         </div>
       )}

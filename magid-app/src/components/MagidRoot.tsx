@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ParsedElement } from '@magiden/client-core';
 import { MenuScene } from './MenuScene';
 import { NarrationText } from './NarrationText';
+import { ImageElement } from './MagidImage';
 import { CommandButton } from './CommandButton';
 import { VisualFade } from './VisualFade';
 import { ResponsesContainer } from './ResponsesContainer';
@@ -14,8 +15,13 @@ interface ElementProps {
   onNarrationComplete?: () => void;
 }
 
+// Standalone images take their turn among the narrations.
+function isQueued(el: ParsedElement): el is Extract<ParsedElement, { type: 'narration' | 'image' }> {
+  return el.type === 'narration' || el.type === 'image';
+}
+
 function getNarrationDeferMs(el: ParsedElement): number {
-  if (el.type !== 'narration') return 0;
+  if (!isQueued(el)) return 0;
 
   const deferMs = el.data.defer ? parseInt(el.data.defer, 10) : 0;
   return Number.isFinite(deferMs) ? deferMs : 0;
@@ -27,6 +33,7 @@ export function MagidElement({ el, onVisualComplete, onNarrationComplete }: Elem
   switch (el.type) {
     case 'menu':      return <MenuScene data={el.data} />;
     case 'narration': return <NarrationText data={el.data} onComplete={onNarrationComplete} />;
+    case 'image':     return <ImageElement data={el.data} onComplete={onNarrationComplete} />;
     case 'command':   return <CommandButton data={el.data} onClick={sendCmd} />;
     case 'visual':    return <VisualFade data={el.data} onComplete={onVisualComplete} />;
     case 'responses': return <ResponsesContainer elements={el.elements} />;
@@ -59,7 +66,7 @@ export function MagidRoot({ elements, onVisualComplete }: Props) {
   return (
       <div className={`magid-response-pane ${styles.responsePane}`}>
         {elements.map((el, i) => {
-          if (el.type !== 'narration') {
+          if (!isQueued(el)) {
             return (
                 <MagidElement
                     key={i}

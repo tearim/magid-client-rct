@@ -2,9 +2,14 @@ import { createElement, Fragment } from 'react';
 import type { ReactNode } from 'react';
 import { parseMagidCss, VOID_TAGS, type HtmlNode } from '@magiden/client-core';
 
-// Renders the core's sanitized HTML tree (see magid-core/src/html.ts) as React elements — never via innerHTML.
+// Renders the core's sanitized HTML tree (see the core's html.ts) as React elements — never via innerHTML.
 // `renderText` renders each text node; `isLast` marks the last one, where a typewriter's reveal edge is.
-export function renderHtml(nodes: HtmlNode[], renderText: (text: string, isLast: boolean) => ReactNode): ReactNode {
+// `renderAnchor` renders what belongs at an anchor (a detached element); without it, anchors render nothing.
+export function renderHtml(
+  nodes: HtmlNode[],
+  renderText: (text: string, isLast: boolean) => ReactNode,
+  renderAnchor?: (anchor: string) => ReactNode,
+): ReactNode {
   let textNodesLeft = countTextNodes(nodes);
   const render = (list: HtmlNode[]): ReactNode[] =>
     list.map((node, i) => {
@@ -12,6 +17,7 @@ export function renderHtml(nodes: HtmlNode[], renderText: (text: string, isLast:
         textNodesLeft--;
         return <Fragment key={i}>{renderText(node.text, textNodesLeft === 0)}</Fragment>;
       }
+      if (node.type === 'anchor') return <Fragment key={i}>{renderAnchor?.(node.anchor)}</Fragment>;
       const props: Record<string, unknown> = { key: i };
       for (const [name, value] of Object.entries(node.attributes)) {
         if (name === 'class') props.className = value;
@@ -28,6 +34,6 @@ export function renderHtml(nodes: HtmlNode[], renderText: (text: string, isLast:
 
 function countTextNodes(nodes: HtmlNode[]): number {
   let n = 0;
-  for (const node of nodes) n += node.type === 'text' ? 1 : countTextNodes(node.children);
+  for (const node of nodes) n += node.type === 'text' ? 1 : node.type === 'anchor' ? 0 : countTextNodes(node.children);
   return n;
 }

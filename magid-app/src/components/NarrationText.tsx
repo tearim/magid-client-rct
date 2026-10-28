@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import {
-  getConsequentalTypingConfig, parseMagidCss, prepareDisplayText, resolveCleanText, truncateHtml, withFileRequestToken,
+  getConsequentalTypingConfig, parseMagidCss, prepareDisplayText, resolveCleanText, truncateHtml,
   type NarrationResponse,
 } from '@magiden/client-core';
 import { useTypewriter } from '../hooks/useTypewriter';
@@ -9,12 +9,11 @@ import { renderWithBreaks, TypingStyle } from '../lib/renderText';
 import { renderHtml } from '../lib/renderHtml';
 import { useMagidStore } from '../store/magidStore';
 import { useImpliedClasses } from '../hooks/useImpliedClasses';
+import { DetachedElement } from './DetachedElement';
+import { MagidImage } from './MagidImage';
 
 interface Props {
-  // `image` comes from `<show image="…">` (a narration with an image) or from `<img>` (`image-mode` "true": the
-  // narration is the image, with `alt`/`width`/`height`). The core passes these through, `magid:///` already resolved,
-  // but doesn't declare them yet.
-  data: NarrationResponse & { image?: string; 'image-mode'?: string; alt?: string; width?: string; height?: string };
+  data: NarrationResponse;
   onComplete?: () => void;
 }
 
@@ -29,13 +28,14 @@ export function NarrationText({ data, onComplete }: Props) {
   const htmlPolicy = useMagidStore((s) => s.htmlPolicy);
   const baseUrl = useMagidStore((s) => s.baseUrl);
   const fileRequestToken = useMagidStore((s) => s.fileRequestToken);
-  // Tags are parsed once; the typewriter only sees the visible text, so a tag appears whole, never typed out.
+  // Detached elements (e.g. an <img> inside the text) go where their anchor is.
+  const detached = data['detached-elements'];
+  const anchors = useMemo(() => (detached ?? []).map((d) => d['text-anchor'] ?? ''), [detached]);
+  // Tags and anchors are parsed once; the typewriter only sees the visible text, so they appear whole, never typed out.
   const { nodes, timeline } = useMemo(
-    () => prepareDisplayText(rawText, htmlPolicy, { baseUrl, fileRequestToken }),
-    [rawText, htmlPolicy, baseUrl, fileRequestToken],
+    () => prepareDisplayText(rawText, htmlPolicy, { baseUrl, fileRequestToken, anchors }),
+    [rawText, htmlPolicy, baseUrl, fileRequestToken, anchors],
   );
-  // Server files need the session's token; other URLs are left as they are.
-  const imageSrc = data.image ? withFileRequestToken(data.image, baseUrl, fileRequestToken) : undefined;
 
   useEffect(() => {
     setSkipTimelines(prefs.getBoolean(PREF_KEYS.NARRATION_IGNORE_TEXT_TL));
@@ -75,17 +75,8 @@ export function NarrationText({ data, onComplete }: Props) {
 
   if (!visible) return null;
 
-  // In image mode the author's class and css belong to the image (`<img class="rounded">`), not to the narration.
-  const imageMode = data['image-mode'] === 'true';
-  const ownClass = imageMode ? undefined : className;
-  const classes = ['magid-default-narration', ownClass].filter(Boolean).join(' ');
-  const style = data.css && !imageMode ? parseMagidCss(data.css) : undefined;
-  const imageClasses = ['magid-narration-image', imageMode ? className : undefined].filter(Boolean).join(' ');
-  const imageStyle = {
-    ...(imageMode && data.css ? parseMagidCss(data.css) : undefined),
-    ...(data.width ? { width: cssLength(data.width) } : undefined),
-    ...(data.height ? { height: cssLength(data.height) } : undefined),
-  };
+  const classes = ['magid-default-narration', className].filter(Boolean).join(' ');
+  const style = data.css ? parseMagidCss(data.css) : undefined;
 
 
   let typingStyle = undefined;
@@ -105,16 +96,20 @@ export function NarrationText({ data, onComplete }: Props) {
 
   return (
       <div className={classes} style={style}>
-        {imageSrc && <img className={imageClasses} style={imageStyle} src={imageSrc} alt={data.alt ?? ''} />}
-        {renderHtml(truncateHtml(nodes, displayed.length), (text, isLast) =>
-          // The reveal effects (last letters/words) belong at the reveal edge; the isolating ones apply everywhere.
-          isLast || typingStyle === TypingStyle.byLetterIsolating || typingStyle === TypingStyle.byWordIsolating
-            ? renderWithBreaks(text, typingStyle, consequentalTypingConfig.animationResets)
-            : renderWithBreaks(text))}
+        {/* `<show image="…">`: the narration's own image; its class and css stay on the narration. */}
+        {data.image && <div className="magid-narration-image"><MagidImage data={{ image: data.image }} /></div>}
+        {renderHtml(
+          truncateHtml(nodes, displayed.length),
+          (text, isLast) =>
+            // The reveal effects (last letters/words) belong at the reveal edge; the isolating ones apply everywhere.
+            isLast || typingStyle === TypingStyle.byLetterIsolating || typingStyle === TypingStyle.byWordIsolating
+              ? renderWithBreaks(text, typingStyle, consequentalTypingConfig.animationResets)
+              : renderWithBreaks(text),
+          (anchor) => {
+            const d = detached?.find((e) => e['text-anchor'] === anchor);
+            return d && <DetachedElement data={d} />;
+          },
+        )}
       </div>
   );
-}
-// `width="200"` means pixels, as in HTML; anything else (`50%`, `12em`) is a CSS length already.
-function cssLength(value: string): string {
-  return /^\d+(\.\d+)?$/.test(value.trim()) ? `${value.trim()}px` : value;
 }
