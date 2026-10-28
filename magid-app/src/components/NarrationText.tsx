@@ -11,9 +11,10 @@ import { useMagidStore } from '../store/magidStore';
 import { useImpliedClasses } from '../hooks/useImpliedClasses';
 
 interface Props {
-  // `image` (an `image="…"` attribute on `<show>`): the core passes it through, `magid:///` already resolved, but
-  // doesn't declare it yet.
-  data: NarrationResponse & { image?: string };
+  // `image` comes from `<show image="…">` (a narration with an image) or from `<img>` (`image-mode` "true": the
+  // narration is the image, with `alt`/`width`/`height`). The core passes these through, `magid:///` already resolved,
+  // but doesn't declare them yet.
+  data: NarrationResponse & { image?: string; 'image-mode'?: string; alt?: string; width?: string; height?: string };
   onComplete?: () => void;
 }
 
@@ -74,8 +75,17 @@ export function NarrationText({ data, onComplete }: Props) {
 
   if (!visible) return null;
 
-  const classes = ['magid-default-narration', className].filter(Boolean).join(' ');
-  const style = data.css ? parseMagidCss(data.css) : undefined;
+  // In image mode the author's class and css belong to the image (`<img class="rounded">`), not to the narration.
+  const imageMode = data['image-mode'] === 'true';
+  const ownClass = imageMode ? undefined : className;
+  const classes = ['magid-default-narration', ownClass].filter(Boolean).join(' ');
+  const style = data.css && !imageMode ? parseMagidCss(data.css) : undefined;
+  const imageClasses = ['magid-narration-image', imageMode ? className : undefined].filter(Boolean).join(' ');
+  const imageStyle = {
+    ...(imageMode && data.css ? parseMagidCss(data.css) : undefined),
+    ...(data.width ? { width: cssLength(data.width) } : undefined),
+    ...(data.height ? { height: cssLength(data.height) } : undefined),
+  };
 
 
   let typingStyle = undefined;
@@ -95,7 +105,7 @@ export function NarrationText({ data, onComplete }: Props) {
 
   return (
       <div className={classes} style={style}>
-        {imageSrc && <img className="magid-narration-image" src={imageSrc} alt="" />}
+        {imageSrc && <img className={imageClasses} style={imageStyle} src={imageSrc} alt={data.alt ?? ''} />}
         {renderHtml(truncateHtml(nodes, displayed.length), (text, isLast) =>
           // The reveal effects (last letters/words) belong at the reveal edge; the isolating ones apply everywhere.
           isLast || typingStyle === TypingStyle.byLetterIsolating || typingStyle === TypingStyle.byWordIsolating
@@ -103,4 +113,8 @@ export function NarrationText({ data, onComplete }: Props) {
             : renderWithBreaks(text))}
       </div>
   );
+}
+// `width="200"` means pixels, as in HTML; anything else (`50%`, `12em`) is a CSS length already.
+function cssLength(value: string): string {
+  return /^\d+(\.\d+)?$/.test(value.trim()) ? `${value.trim()}px` : value;
 }
