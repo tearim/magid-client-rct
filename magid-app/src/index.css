@@ -52,6 +52,12 @@ body {
   line-height: 1.7;
 }
 
+.magid-narration-image {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
 .magid-common-button {
   padding: 0.5rem 1.25rem;
   background: transparent;

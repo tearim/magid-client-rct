@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import {
-  getConsequentalTypingConfig, parseMagidCss, prepareDisplayText, resolveCleanText, truncateHtml, type NarrationResponse,
+  getConsequentalTypingConfig, parseMagidCss, prepareDisplayText, resolveCleanText, truncateHtml, withFileRequestToken,
+  type NarrationResponse,
 } from '@magiden/client-core';
 import { useTypewriter } from '../hooks/useTypewriter';
 import { prefs, PREF_KEYS } from '../prefs/prefHelper';
@@ -10,7 +11,9 @@ import { useMagidStore } from '../store/magidStore';
 import { useImpliedClasses } from '../hooks/useImpliedClasses';
 
 interface Props {
-  data: NarrationResponse;
+  // `image` (an `image="…"` attribute on `<show>`): the core passes it through, `magid:///` already resolved, but
+  // doesn't declare it yet.
+  data: NarrationResponse & { image?: string };
   onComplete?: () => void;
 }
 
@@ -30,6 +33,8 @@ export function NarrationText({ data, onComplete }: Props) {
     () => prepareDisplayText(rawText, htmlPolicy, { baseUrl, fileRequestToken }),
     [rawText, htmlPolicy, baseUrl, fileRequestToken],
   );
+  // Server files need the session's token; other URLs are left as they are.
+  const imageSrc = data.image ? withFileRequestToken(data.image, baseUrl, fileRequestToken) : undefined;
 
   useEffect(() => {
     setSkipTimelines(prefs.getBoolean(PREF_KEYS.NARRATION_IGNORE_TEXT_TL));
@@ -90,6 +95,7 @@ export function NarrationText({ data, onComplete }: Props) {
 
   return (
       <div className={classes} style={style}>
+        {imageSrc && <img className="magid-narration-image" src={imageSrc} alt="" />}
         {renderHtml(truncateHtml(nodes, displayed.length), (text, isLast) =>
           // The reveal effects (last letters/words) belong at the reveal edge; the isolating ones apply everywhere.
           isLast || typingStyle === TypingStyle.byLetterIsolating || typingStyle === TypingStyle.byWordIsolating
