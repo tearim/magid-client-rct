@@ -70,6 +70,9 @@ changes are made there, never here.** This repo depends on the npm release (`mag
 `"@magiden/client-core": "^X.Y.Z"`); `npm install` puts it in `node_modules/@magiden/client-core` (`dist/` + `src/` for
 reading). To try an unreleased core change here, `npm link` it or temporarily depend on `file:../../magid-client-core`,
 then go back to the published version.
+**After changing the core version, restart the dev server with a fresh dependency cache** (`npx -w magid-app vite --force`,
+or delete `magid-app/node_modules/.vite`): Vite pre-bundles the core and may keep serving the old one, so the new app code
+runs against the old core (seen with 0.2.0 → 0.3.0: anchors showed as text).
 
 What the app gets from it (details in the core's `CLAUDE.md`):
 - `MagidClient`: transport (`clientType` `react`), session, scene/freshness recovery, config, detached elements, story
