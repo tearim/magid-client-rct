@@ -8,6 +8,6 @@ export { javaHashCode } from '@magiden/client-core';
 // Announced to the server as `client-type`.
 export const CLIENT_TYPE = 'react';
 
-export function fetchServerStats(baseUrl: string, authToken?: string): Promise<ServerStats> {
-  return core.fetchServerStats({ baseUrl, authToken, clientType: CLIENT_TYPE });
+export function fetchServerStats(baseUrl: string, sessionId?: string): Promise<ServerStats> {
+  return core.fetchServerStats({ baseUrl, sessionId, clientType: CLIENT_TYPE });
 }

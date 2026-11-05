@@ -1,7 +1,9 @@
+import { SESSION_HEADER } from '@magiden/client-core';
+
 const ATTR = 'data-magid-file';
 const blobUrlMap = new Map<string, string>();
 
-export async function injectStyleLink(url: string, fileRequestToken?: string, authToken?: string): Promise<void> {
+export async function injectStyleLink(url: string, fileRequestToken?: string, sessionId?: string): Promise<void> {
   if (document.querySelector(`link[${ATTR}="${url}"]`)) return;
 
   const fetchUrlObj = new URL(url);
@@ -11,7 +13,7 @@ export async function injectStyleLink(url: string, fileRequestToken?: string, au
 
   try {
     const headers: Record<string, string> = {};
-    if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
+    if (sessionId) headers[SESSION_HEADER] = sessionId;
     const res = await fetch(fetchUrl, Object.keys(headers).length ? { headers } : undefined);
     if (!res.ok) {
       console.warn(`[magid] Failed to fetch CSS: ${url} (${res.status})`);
@@ -22,8 +24,8 @@ export async function injectStyleLink(url: string, fileRequestToken?: string, au
     link.rel = 'stylesheet';
     link.setAttribute(ATTR, url);
 
-    // When an auth header is required, <link href> can't carry it — always use blob URL.
-    if (!authToken && (res.headers.get('Content-Type') ?? '').includes('text/css')) {
+    // When the session header is sent, <link href> can't carry it — always use a blob URL.
+    if (!sessionId && (res.headers.get('Content-Type') ?? '').includes('text/css')) {
       await res.body?.cancel();
       link.href = fetchUrl;
     } else {
@@ -49,13 +51,13 @@ export function clearInjectedStylesheets(): void {
 // is gone (story reset/switch, session end), everything is cleared and re-applied.
 let appliedStylesheets: string[] = [];
 
-export function syncStylesheets(urls: string[], fileRequestToken?: string, authToken?: string): void {
+export function syncStylesheets(urls: string[], fileRequestToken?: string, sessionId?: string): void {
   if (urls === appliedStylesheets) return;
   const keepsApplied = appliedStylesheets.every((u) => urls.includes(u));
   if (!keepsApplied) clearInjectedStylesheets();
   const alreadyApplied = keepsApplied ? appliedStylesheets : [];
   for (const url of urls) {
-    if (!alreadyApplied.includes(url)) void injectStyleLink(url, fileRequestToken, authToken);
+    if (!alreadyApplied.includes(url)) void injectStyleLink(url, fileRequestToken, sessionId);
   }
   appliedStylesheets = urls;
 }
