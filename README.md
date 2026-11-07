@@ -72,7 +72,8 @@ Zustand was selected because it fits the app's protocol-driven architecture:
 
 ## Magid protocol (quick overview)
 
-- Requests are sent to a base URL using `?cmd=...` (for example `server-status`, `list-xmls`, `reload-xml`, `set-xml`, or story commands).
+- Requests are sent to a base URL using `?cmd=...` for server commands (for example `server-status`, `list-xmls`,
+  `reload-xml`, `set-xml`); a reply to the story (a menu choice) goes out as `?cmd=story-reply&reply=...`.
 - Responses are JSON objects containing protocol keys such as `menu`, `narration`/`text`, `command`, `visual`, `config`, or a `responses` array.
 - `magid://` anchors in response strings are resolved to the configured base server URL.
 - Text can include `DCSTP_` timeline markers to trigger typewriter-style progressive rendering.

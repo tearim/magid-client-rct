@@ -51,8 +51,8 @@ is in its `content/` directory. Read it when a protocol question comes up; don't
 ## What this is
 
 Web-ready React client for the Magid server — a declarative storytelling engine driven by
-XML/Markdown-authored stories. The server exposes an HTTP API (`GET {baseUrl}?cmd=...`) and
-returns a JSON payload per response describing what to render (narration, menus/choices, visual
+XML/Markdown-authored stories. The server exposes an HTTP API (`GET {baseUrl}?cmd=...`; `cmd` names server commands,
+a reply to the story is `cmd=story-reply&reply=...`, built by the core) and returns a JSON payload per response describing what to render (narration, menus/choices, visual
 transitions, CSS theming, background music). This client is the web counterpart to an existing
 JavaFX desktop client and follows the same server contract — do not change the wire protocol
 unilaterally.

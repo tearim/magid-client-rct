@@ -16,6 +16,7 @@ export interface Toast {
 
 interface MagidActions {
   setBaseUrl: (url: string) => void;
+  // A reply to the story (button, `update-symbol`, '' for the current menu); the core sends it as `cmd=story-reply`.
   sendCommand: (cmd: string) => Promise<void>;
   selectStory: (xmlPath: string) => Promise<boolean>;
   resetStory: () => Promise<boolean>;
