@@ -7,11 +7,6 @@ Delete an entry once it's resolved. Each entry: what's wrong, where, why it matt
 
 ## Rendering
 
-### R4. Menu "append" detached elements never appear when the description has `DCSTP_` markers (2026-10-23)
-- `MenuScene.tsx`: `typingComplete = displayed === timeline`, but `useTypewriter` ends with the marker-free text, so with
-  markers the comparison never holds and `appendEls` stay hidden. (Same before HTML support, with `rawDesc`.)
-- Fix idea: compare with `resolveCleanText(timeline)`, as `NarrationText` does.
-
 ## Tooling / hygiene
 
 ### H1. Lint baseline (magid-app): 15 errors, 1 warning (2026-10-21; was 26 before R1, the core extraction and the store rewrite)

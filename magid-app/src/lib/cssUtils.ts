@@ -1,63 +1,100 @@
-import { SESSION_HEADER } from '@magiden/client-core';
+import { SESSION_HEADER, scopeStylesheet } from '@magiden/client-core';
 
 const ATTR = 'data-magid-file';
-const blobUrlMap = new Map<string, string>();
 
-export async function injectStyleLink(url: string, fileRequestToken?: string, sessionId?: string): Promise<void> {
-  if (document.querySelector(`link[${ATTR}="${url}"]`)) return;
+// Where one instance's story stylesheets go.
+export interface StylesheetTarget {
+  // The page's <head> (full app, or an embedded instance without a shadow root) or the instance's shadow root.
+  container: HTMLElement | ShadowRoot;
+  // null: page-level sheets as <link>s (the full app). Otherwise the sheet is fetched as text and scoped with
+  // @magiden/client-core's scopeStylesheet: ':host' in a shadow root, or a selector for the mount element.
+  scope: string | null;
+}
 
+export interface StylesheetSync {
+  // Brings the injected sheets in line with the client's `stylesheets` state: new URLs are added; if any applied URL is
+  // gone (story reset/switch, session end), everything is cleared and re-applied.
+  sync(urls: string[], fileRequestToken?: string, sessionId?: string): void;
+  clear(): void;
+}
+
+function fetchUrlOf(url: string, fileRequestToken?: string): string {
   const fetchUrlObj = new URL(url);
   fetchUrlObj.searchParams.set('cmd', 'resolve-magid-protocol');
   if (fileRequestToken) fetchUrlObj.searchParams.set('file-request-token', fileRequestToken);
-  const fetchUrl = fetchUrlObj.toString();
-
-  try {
-    const headers: Record<string, string> = {};
-    if (sessionId) headers[SESSION_HEADER] = sessionId;
-    const res = await fetch(fetchUrl, Object.keys(headers).length ? { headers } : undefined);
-    if (!res.ok) {
-      console.warn(`[magid] Failed to fetch CSS: ${url} (${res.status})`);
-      return;
-    }
-
-    const link = document.createElement('link');
-    link.rel = 'stylesheet';
-    link.setAttribute(ATTR, url);
-
-    // When the session header is sent, <link href> can't carry it — always use a blob URL.
-    if (!sessionId && (res.headers.get('Content-Type') ?? '').includes('text/css')) {
-      await res.body?.cancel();
-      link.href = fetchUrl;
-    } else {
-      const text = await res.text();
-      const blobUrl = URL.createObjectURL(new Blob([text], { type: 'text/css' }));
-      blobUrlMap.set(url, blobUrl);
-      link.href = blobUrl;
-    }
-
-    document.head.appendChild(link);
-  } catch (e) {
-    console.warn(`[magid] Failed to fetch CSS: ${url}`, e);
-  }
+  return fetchUrlObj.toString();
 }
 
-export function clearInjectedStylesheets(): void {
-  document.querySelectorAll(`link[${ATTR}]`).forEach((el) => el.remove());
-  blobUrlMap.forEach((blobUrl) => URL.revokeObjectURL(blobUrl));
-  blobUrlMap.clear();
-}
+export function createStylesheetSync(target: StylesheetTarget): StylesheetSync {
+  const blobUrls = new Map<string, string>();
+  const injected: Element[] = [];
+  let applied: string[] = [];
+  // Bumped by clear(), so a sheet that arrives after a story switch isn't added to the new story.
+  let generation = 0;
 
-// Brings the injected <link>s in line with the client's `stylesheets` state: new URLs are added; if any applied URL
-// is gone (story reset/switch, session end), everything is cleared and re-applied.
-let appliedStylesheets: string[] = [];
+  async function inject(url: string, fileRequestToken?: string, sessionId?: string): Promise<void> {
+    if (injected.some((el) => el.getAttribute(ATTR) === url)) return;
+    const at = generation;
+    const fetchUrl = fetchUrlOf(url, fileRequestToken);
 
-export function syncStylesheets(urls: string[], fileRequestToken?: string, sessionId?: string): void {
-  if (urls === appliedStylesheets) return;
-  const keepsApplied = appliedStylesheets.every((u) => urls.includes(u));
-  if (!keepsApplied) clearInjectedStylesheets();
-  const alreadyApplied = keepsApplied ? appliedStylesheets : [];
-  for (const url of urls) {
-    if (!alreadyApplied.includes(url)) void injectStyleLink(url, fileRequestToken, sessionId);
+    try {
+      const headers: Record<string, string> = {};
+      if (sessionId) headers[SESSION_HEADER] = sessionId;
+      const res = await fetch(fetchUrl, Object.keys(headers).length ? { headers } : undefined);
+      if (!res.ok) {
+        console.warn(`[magid] Failed to fetch CSS: ${url} (${res.status})`);
+        return;
+      }
+      if (target.scope !== null) {
+        const { css, documentCss } = scopeStylesheet(await res.text(), target.scope);
+        if (at !== generation) return;
+        add(target.container, 'style', url, (el) => { el.textContent = css; });
+        // @font-face / @property only work at document level.
+        if (documentCss) add(document.head, 'style', url, (el) => { el.textContent = documentCss; });
+        return;
+      }
+
+      // When the session header is sent, <link href> can't carry it — always use a blob URL.
+      let href = fetchUrl;
+      if (!sessionId && (res.headers.get('Content-Type') ?? '').includes('text/css')) {
+        await res.body?.cancel();
+      } else {
+        href = URL.createObjectURL(new Blob([await res.text()], { type: 'text/css' }));
+        blobUrls.set(url, href);
+      }
+      if (at !== generation) return;
+      add(target.container, 'link', url, (el) => { (el as HTMLLinkElement).rel = 'stylesheet'; (el as HTMLLinkElement).href = href; });
+    } catch (e) {
+      console.warn(`[magid] Failed to fetch CSS: ${url}`, e);
+    }
   }
-  appliedStylesheets = urls;
+
+  function add(parent: HTMLElement | ShadowRoot, tag: 'style' | 'link', url: string, fill: (el: HTMLElement) => void): void {
+    const el = document.createElement(tag);
+    el.setAttribute(ATTR, url);
+    fill(el);
+    parent.appendChild(el);
+    injected.push(el);
+  }
+
+  function clear(): void {
+    generation++;
+    injected.splice(0).forEach((el) => el.remove());
+    blobUrls.forEach((blobUrl) => URL.revokeObjectURL(blobUrl));
+    blobUrls.clear();
+    applied = [];
+  }
+
+  function sync(urls: string[], fileRequestToken?: string, sessionId?: string): void {
+    if (urls === applied) return;
+    const keepsApplied = applied.every((u) => urls.includes(u));
+    if (!keepsApplied) clear();
+    const alreadyApplied = keepsApplied ? applied : [];
+    for (const url of urls) {
+      if (!alreadyApplied.includes(url)) void inject(url, fileRequestToken, sessionId);
+    }
+    applied = urls;
+  }
+
+  return { sync, clear };
 }

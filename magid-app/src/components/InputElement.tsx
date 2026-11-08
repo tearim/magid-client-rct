@@ -1,7 +1,7 @@
 import {type CSSProperties, type ReactNode, useEffect, useRef} from 'react';
 import { useId } from 'react';
 import { parseMagidCss, type DetachedElementResponse } from '@magiden/client-core';
-import { useMagidStore } from '../store/magidStore';
+import { useMagidStore, useMagidStoreApi } from '../store/magidStore';
 import {useDebounce} from "../hooks/useDebounce.ts";
 import { useImpliedClasses } from '../hooks/useImpliedClasses';
 
@@ -61,6 +61,7 @@ export function InputElement({ data }: Props) {
   const name = data['input-name'] ?? '';
   const value = useMagidStore((s) => s.userInputs[name] ?? '');
   const setUserInput = useMagidStore((s) => s.setUserInput);
+  const storeApi = useMagidStoreApi();
   const debouncedValue = useDebounce(value, 500);
   const firstRun = useRef(true);
   const inputClass = useImpliedClasses(data.class);
@@ -89,9 +90,9 @@ export function InputElement({ data }: Props) {
     }
     // Only trigger the command if it's async AND the debounced value actually changed
     if (isAsync && debouncedValue) {
-     useMagidStore.getState().sendCommand('update-symbol');
+     void storeApi.getState().sendCommand('update-symbol');
     }
-  }, [debouncedValue, isAsync]);
+  }, [debouncedValue, isAsync, storeApi]);
 
   return (
     <span className="magid-input-wrapper">

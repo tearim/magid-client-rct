@@ -1,20 +1,33 @@
-*, *::before, *::after {
+/* Everything here applies inside a Magid root only (mountMagid's .magid-app-root), so it never styles an embedding
+   page; the full app's page-level rules are in app-page.css. */
+.magid-app-root, .magid-app-root *, .magid-app-root *::before, .magid-app-root *::after {
   box-sizing: border-box;
 }
 
-body {
-  margin: 0;
-  padding: 0;
+.magid-app-root {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
   font-family: 'Georgia', serif;
   background: #0a0a14;
   color: #e0e0e0;
   -webkit-font-smoothing: antialiased;
 }
 
-#root {
-  display: flex;
-  flex-direction: column;
-  min-height: 100vh;
+/* Embedded: the page decides the size; the story scrolls inside, overlays (fades, toasts) stay inside. */
+.magid-app-root.magid-embedded {
+  position: relative;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+}
+
+.magid-app-root.magid-embedded:focus {
+  outline: none;
+}
+
+.magid-embedded .magid-outer-background {
+  min-height: 100%;
 }
 
 /* Default Magid class names — servers may override these */

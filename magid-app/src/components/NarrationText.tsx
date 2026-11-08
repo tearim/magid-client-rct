@@ -4,10 +4,10 @@ import {
   type NarrationResponse,
 } from '@magiden/client-core';
 import { useTypewriter } from '../hooks/useTypewriter';
-import { prefs, PREF_KEYS } from '../prefs/prefHelper';
+import { PREF_KEYS } from '../prefs/prefHelper';
 import { renderWithBreaks, TypingStyle } from '../lib/renderText';
 import { renderHtml } from '../lib/renderHtml';
-import { useMagidStore } from '../store/magidStore';
+import { useMagidHost, useMagidStore, usePrefs } from '../store/magidStore';
 import { useImpliedClasses } from '../hooks/useImpliedClasses';
 import { DetachedElement } from './DetachedElement';
 import { MagidImage } from './MagidImage';
@@ -24,6 +24,8 @@ export function NarrationText({ data, onComplete }: Props) {
   const [visible, setVisible] = useState(normalizedDeferMs === 0);
   const [skipTimelines, setSkipTimelines] = useState(false);
   const completionReportedRef = useRef(false);
+  const prefs = usePrefs();
+  const { keyTarget } = useMagidHost();
   const className = useImpliedClasses(data.class);
   const htmlPolicy = useMagidStore((s) => s.htmlPolicy);
   const baseUrl = useMagidStore((s) => s.baseUrl);
@@ -39,7 +41,7 @@ export function NarrationText({ data, onComplete }: Props) {
 
   useEffect(() => {
     setSkipTimelines(prefs.getBoolean(PREF_KEYS.NARRATION_IGNORE_TEXT_TL));
-  }, []);
+  }, [prefs]);
 
   useEffect(() => {
     completionReportedRef.current = false;
@@ -52,12 +54,13 @@ export function NarrationText({ data, onComplete }: Props) {
   }, [rawText, normalizedDeferMs]);
 
   useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setSkipTimelines(true);
+    // The window in the full app; the Magid area (while it has focus) when embedded.
+    const handler = (e: Event) => {
+      if ((e as KeyboardEvent).key === 'Escape') setSkipTimelines(true);
     };
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
-  }, []);
+    keyTarget.addEventListener('keydown', handler);
+    return () => keyTarget.removeEventListener('keydown', handler);
+  }, [keyTarget]);
 
 
   const consequentalTypingConfig = getConsequentalTypingConfig(className);

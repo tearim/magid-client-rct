@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
-import { prefs, PREF_KEYS, urlHistory } from '../prefs/prefHelper';
+import { PREF_KEYS } from '../prefs/prefHelper';
 import styles from './OptionsModal.module.css';
-import { useMagidStore } from '../store/magidStore';
+import { useMagidStore, usePrefs, useUrlHistory } from '../store/magidStore';
 
 interface Props {
   baseUrl: string;
@@ -18,6 +18,8 @@ export function OptionsModal({ baseUrl, onBaseUrlChange, onClose, onMessage, onO
   const canShowStats   = useMagidStore((s) => s.can('server-stats'));
   const refreshXmlList = useMagidStore((s) => s.refreshXmlList);
   const selectStory    = useMagidStore((s) => s.selectStory);
+  const prefs          = usePrefs();
+  const urlHistory     = useUrlHistory();
 
   const [serverAddr, setServerAddr]     = useState(() => prefs.get(PREF_KEYS.SERVER_ADDRESS, baseUrl));
   const [selectedXml, setSelectedXml]  = useState(() => prefs.get(PREF_KEYS.STORY_XML));

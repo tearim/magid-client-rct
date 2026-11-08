@@ -7,6 +7,18 @@
   font-family: 'Georgia', serif;
 }
 
+:global(.magid-embedded) .shell {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+/* Shown by the story-only chrome while there is nothing to render yet. */
+.storyStatus {
+  padding: 1rem;
+  opacity: 0.7;
+}
+
 .header {
   display: flex;
   align-items: center;

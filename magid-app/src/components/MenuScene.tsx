@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useRef } from 'react';
-import { getConsequentalTypingConfig, prepareDisplayText, truncateHtml, type MenuResponse } from '@magiden/client-core';
+import {
+  getConsequentalTypingConfig, prepareDisplayText, resolveCleanText, truncateHtml, type MenuResponse,
+} from '@magiden/client-core';
 import { CommandButton } from './CommandButton';
 import { DetachedElement } from './DetachedElement';
 import { useAudio } from '../hooks/useAudio';
 import { useTypewriter } from '../hooks/useTypewriter';
-import { prefs, PREF_KEYS } from '../prefs/prefHelper';
+import { PREF_KEYS } from '../prefs/prefHelper';
 import { useMagidCommand } from '../hooks/useMagidCommand';
-import { useMagidStore } from '../store/magidStore';
+import { useMagidHost, useMagidStore, usePrefs } from '../store/magidStore';
 import { renderWithBreaks } from '../lib/renderText';
 import { renderHtml } from '../lib/renderHtml';
 import { useImpliedClasses } from '../hooks/useImpliedClasses';
@@ -19,6 +21,8 @@ export function MenuScene({ data }: Props) {
   const sendCmd = useMagidCommand();
   const fileRequestToken = useMagidStore((s) => s.fileRequestToken);
   const descRef = useRef<HTMLDivElement>(null);
+  const prefs = usePrefs();
+  const { setWindowSize } = useMagidHost();
   const storedVolume = parseFloat(prefs.get(PREF_KEYS.MUSIC_VOLUME, ''));
   const volume = isNaN(storedVolume) ? 0.8 : storedVolume;
   const skipTimelines = prefs.getBoolean(PREF_KEYS.NARRATION_IGNORE_TEXT_TL);
@@ -39,7 +43,8 @@ export function MenuScene({ data }: Props) {
   const menuClass = useImpliedClasses(data['menu-class']);
   const consequentalTypingConfig = getConsequentalTypingConfig(menuClass);
   const displayed = useTypewriter(timeline, skipTimelines, consequentalTypingConfig);
-  const typingComplete = displayed === timeline;
+  // useTypewriter ends with the marker-free text, so compare with that (as NarrationText does).
+  const typingComplete = displayed === resolveCleanText(timeline);
 
   const prependEls = (detachedElements ?? []).filter((d) => d.detached === 'prepend');
   const appendEls = (detachedElements ?? []).filter((d) => d.detached === 'append');
@@ -66,10 +71,9 @@ export function MenuScene({ data }: Props) {
       const css = data['menu-css'];
       const wMatch = css.match(/-mg-window-width\s*:\s*(\d+)/);
       const hMatch = css.match(/-mg-window-height\s*:\s*(\d+)/);
-      if (wMatch) document.documentElement.style.width = wMatch[1] + 'px';
-      if (hMatch) document.documentElement.style.height = hMatch[1] + 'px';
+      if (wMatch || hMatch) setWindowSize(wMatch ? Number(wMatch[1]) : undefined, hMatch ? Number(hMatch[1]) : undefined);
     }
-  }, [data]);
+  }, [data, setWindowSize]);
 
   const options = data['menu-options'] ?? [];
   const n = options.length;

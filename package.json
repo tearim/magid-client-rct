@@ -7,6 +7,7 @@
   "scripts": {
     "dev": "npm run dev -w magid-app",
     "build": "npm run build -w magid-app",
+    "build:embed": "npm run build:embed -w magid-app",
     "test": "npm run test --workspaces",
     "lint": "npm run lint --workspaces",
     "typecheck": "npx -w magid-app tsc -b"

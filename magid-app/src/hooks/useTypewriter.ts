@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { hasTimeLineStops, parseTextSegments } from '@magiden/client-core';
+import { hasTimeLineStops, parseTextSegments, resolveCleanText } from '@magiden/client-core';
 
 interface TypewriterOptions {
   typeEachLetter?: boolean;
@@ -16,7 +16,7 @@ export function useTypewriter(raw: string, skip: boolean, options?: TypewriterOp
 
   useEffect(() => {
     if ((!typeEachLetter && !typeEachWord ) && ( skip || !hasTimeLineStops(raw) )) {
-      setDisplayed(raw);
+      setDisplayed(resolveCleanText(raw));
       return;
     }
     setDisplayed('');
@@ -73,8 +73,9 @@ export function useTypewriter(raw: string, skip: boolean, options?: TypewriterOp
   }, [raw, skip, typeEachLetter, typeElementMs]);
 
   // For non-animated text bypass state entirely — avoids a blank first render
-  // because useEffect runs after paint, not during.
-  if ((!typeEachLetter && !typeEachWord )  && ( skip || !hasTimeLineStops(raw) )) return raw;
+  // because useEffect runs after paint, not during. Skipped timelines still end with the clean text, like animated ones,
+  // so callers can compare with resolveCleanText(raw) to know the text is complete.
+  if ((!typeEachLetter && !typeEachWord )  && ( skip || !hasTimeLineStops(raw) )) return resolveCleanText(raw);
   // When animation is complete, never return raw markers — displayed is already clean.
   return displayed;
 }

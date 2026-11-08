@@ -92,7 +92,8 @@ Install once from the **repo root**; root scripts run in the `magid-app` workspa
 npm install          # also installs @magiden/client-core from npm
 npm run dev          # app dev server w/ HMR, default http://localhost:5173
 npm run build        # app: tsc -b && vite build
-npm run test         # vitest (the app has no tests of its own yet; the core's are in its repo)
+npm run build:embed  # embeddable Magid: vite build --mode embed → magid-app/dist-embed/magid-embed.js + .css
+npm run test         # vitest, jsdom: component tests (react-dom + act, no testing-library); protocol tests are in the core
 npm run lint         # eslint
 npm run typecheck    # app: tsc -b
 ```
@@ -101,23 +102,47 @@ Inside `magid-app` the usual `npm run test|lint|test:watch` work too.
 Run tests matching a name: `npx vitest run -t "parses a menu response"`
 
 Default dev target server (Magid backend) is `http://localhost:8090`; the client's own dev
-server defaults to `http://localhost:5173`.
+server defaults to `http://localhost:5173`. The embedding example is `http://localhost:5173/examples/embed.html`
+(`magid-app/examples/embed.html`: a host page with aggressive CSS; query options in its header comment).
 
 ## Architecture
 
+### Mounting: full app or embedded (`magid-app/src/embed/`)
+
+Every Magid is mounted with `mountMagid(element, options)` (`embed/mountMagid.tsx`, options in `embed/options.ts`):
+`main.tsx` mounts the full app (`mode: 'app'`) on `#root`; a page that isn't Magid's own mounts an embedded one into
+any element (the embed build's entry is `embed/index.ts`; plan and decisions in `EMBEDDING-PLAN.md`). Embedded
+defaults: `chrome: 'story'` (no header/welcome/lobby/Options/Stats; server and story come from the options, a stored
+session resumes and only a new one loads `story`), `isolation: 'shadow'`, `storagePrefix: 'magid.'`,
+`fullscreen: 'off'`. `mountMagid` builds the instance's `MagidHost`, the targets for everything page-level:
+- **App**: stylesheets as `<link>`s in `<head>`, keys on `window`, fullscreen and `-mg-window-*` on `<html>`, fades
+  `fixed` over the window.
+- **Embedded**: the root (`.magid-app-root.magid-embedded`, focusable) takes keys, `-mg-window-*` and fades (portal);
+  `fullscreen: 'element'` makes the element fullscreen. With `'shadow'` the root lives in the element's shadow root and
+  story CSS goes there through the core's `scopeStylesheet(css, ':host')` (`@font-face`/`@property` into `<head>`);
+  with `'none'` it's scoped to `[data-magid-mount="N"]` in `<head>`. The app's own CSS reaches a shadow root as
+  `magid-embed.css` next to the script (embed build) or as mirrored Vite `<style>`s (dev).
+Nothing in components may touch `document`/`window` directly: use the host (`useMagidHost()`).
+`index.css` only styles inside `.magid-app-root`; the full app's `<body>` rules are in `app-page.css` (main.tsx only).
+
 ### The store is only an adapter
 
-`magid-app/src/store/magidStore.ts` creates the app's `magidClient` (`clientType` `react`, `localStorage` via `prefs`,
-`disabledCommands` from `clientConfig`), mirrors `getState()` into zustand, and handles what is UI-only: `notice` →
-toasts, `viewport` → fullscreen (unless the user pref says no), `stylesheets` → `syncStylesheets`. Components keep
-using `useMagidStore` (`can` via `useMagidStore((s) => s.can('set-xml'))` re-renders when the server's list changes);
-protocol changes belong in the core, never in the store or components.
+`magid-app/src/store/magidStore.ts`: `createMagidInstance(options, host)` creates one `MagidClient` per mount
+(`clientType` `react`, storage via the instance's prefs, `disabledCommands` from its `clientConfig`), mirrors
+`getState()` into a zustand store, and handles what is UI-only: `notice` → toasts, `viewport` → fullscreen of
+`host.fullscreenTarget` (unless the user pref says no), `stylesheets` → `createStylesheetSync(host.stylesheets)`.
+The instance reaches components through `MagidContext`; components use `useMagidStore` (`can` via
+`useMagidStore((s) => s.can('set-xml'))` re-renders when the server's list changes), `useMagidStoreApi().getState()`
+outside rendering, and `usePrefs`/`useUrlHistory`/`useClientConfig`/`useMountOptions`/`useMagidHost`. There are no
+module-level singletons, so two Magids can share a page. Component tests wrap in `withMagid(magidTestInstance(), …)`
+(`src/test/magidTestInstance.tsx`). Protocol changes belong in the core, never in the store or components.
 
 ### Component/UI flow
 
 `App.tsx` decides which top-level screen to show based on store state, not routing (no router
 in this app): `WelcomePage` (no server session yet) → `ServerLobbyPage` (session established, no
-active scene) → `MagidRoot` (elements to render). `MagidRoot`/`MagidElement` dispatches
+active scene) → `MagidRoot` (elements to render). With `chrome: 'story'` (embedded) it renders only `MagidRoot` (or a
+loading/error line), the blocked banner and toasts. `MagidRoot`/`MagidElement` dispatches
 `ParsedElement`s to focused renderers (`MenuScene`, `NarrationText`, `ImageElement`, `CommandButton`,
 `VisualFade`, `ResponsesContainer`, `DetachedElement`). `ResponsesContainer` and `MagidRoot` reveal narrations one after
 another (each waits for the previous one's `onComplete`, unless it has a `defer`); standalone images (`ImageElement`)
@@ -141,11 +166,13 @@ file-request-token for server files (added at render time; it can change). `Imag
 ### CSS handling
 
 Two independent CSS mechanisms exist — don't confuse them:
-- `magid-app/src/lib/cssUtils.ts` (`syncStylesheets` → `injectStyleLink`/`clearInjectedStylesheets`) fetches server-hosted
-  stylesheets (the core's `state.stylesheets`) as `<link>` tags, using a blob URL when an auth token must be
-  attached (since `<link href>` can't carry headers).
+- `magid-app/src/lib/cssUtils.ts` (`createStylesheetSync(target)` → `sync`/`clear`, one per instance) fetches
+  server-hosted stylesheets (the core's `state.stylesheets`) with `cmd=resolve-magid-protocol`. Full app: `<link>`
+  tags, with a blob URL when the session header must be sent (since `<link href>` can't carry headers). Embedded:
+  `<style>`s with the sheet scoped by the core's `scopeStylesheet` (see Mounting).
 - The core's `parseMagidCss` turns inline per-element `css` strings into a `style` object (incl. `-mg-abs-x`/`-y`).
-  `MenuScene` still applies `menu-css` raw via `style.cssText` and handles `-mg-window-width/height` itself.
+  `MenuScene` still applies `menu-css` raw via `style.cssText` and passes `-mg-window-width/height` to
+  `host.setWindowSize`.
 
 ### Display text: typewriter, typing styles, HTML
 
@@ -172,8 +199,9 @@ buttons (`command-class`) and input elements.
 
 ### Preferences
 
-`magid-app/src/prefs/prefHelper.ts` wraps `localStorage` (`prefs.get/set/getBoolean/getDouble`, keyed by
-`PREF_KEYS`) plus a small MRU `urlHistory` list of previously used server addresses. This is the
+`magid-app/src/prefs/prefHelper.ts`: `createPrefs(prefix)` wraps `localStorage` (`get/set/getBoolean/getDouble`,
+keyed by `PREF_KEYS`, every key prefixed with the instance's `storagePrefix`) and `createUrlHistory(prefs)` is a small
+MRU list of previously used server addresses; components get them with `usePrefs()`/`useUrlHistory()`. This is the
 only persistence mechanism in the app (besides in-memory Zustand state) — session id and file
 request token are also persisted here so sessions survive a reload.
 
@@ -186,5 +214,6 @@ Don't implement it without checking whether the JFX client's behavior has actual
 ### Operator config vs. user options
 
 `magid-app/src/config/clientConfig.ts` is a compiled-in, non-user-editable flag set for the operator/story
-owner (e.g. whether to show the Connect/Reset Server buttons) — distinct from `OptionsModal`,
+owner (e.g. whether to show the Connect/Reset Server buttons; an embedding page overrides it per instance with
+`MagidMountOptions.clientConfig`, read through `useClientConfig()`) — distinct from `OptionsModal`,
 which holds end-user-adjustable runtime preferences.

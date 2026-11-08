@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { fetchServerStats, javaHashCode } from '../api/magidClient';
 import type { ServerStats, ServerStatsSession } from '@magiden/client-core';
-import { useMagidStore } from '../store/magidStore';
+import { useMagidHost, useMagidStore } from '../store/magidStore';
 import styles from './ServerStatsDashboard.module.css';
 
 const KNOWN_HEADER_KEYS = new Set([
@@ -69,6 +69,7 @@ interface Props {
 export function ServerStatsDashboard({ baseUrl, onClose }: Props) {
   const sessionId  = useMagidStore((s) => s.sessionId);
   const endSession = useMagidStore((s) => s.endSession);
+  const { keyTarget } = useMagidHost();
   const myHash     = sessionId !== null ? javaHashCode(sessionId) : null;
   const [stats, setStats]             = useState<ServerStats | null>(null);
   const [error, setError]             = useState<string | null>(null);
@@ -101,10 +102,10 @@ export function ServerStatsDashboard({ baseUrl, onClose }: Props) {
 
   // Close on Escape
   useEffect(() => {
-    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
-  }, [onClose]);
+    const handler = (e: Event) => { if ((e as KeyboardEvent).key === 'Escape') onClose(); };
+    keyTarget.addEventListener('keydown', handler);
+    return () => keyTarget.removeEventListener('keydown', handler);
+  }, [onClose, keyTarget]);
 
   // Extra dynamic columns derived from all sessions
   const extraSessionKeys: string[] = stats

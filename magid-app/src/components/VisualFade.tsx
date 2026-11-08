@@ -1,5 +1,7 @@
 import { useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import type { VisualResponse } from '@magiden/client-core';
+import { useMagidHost } from '../store/magidStore';
 
 interface Props {
   data: VisualResponse;
@@ -8,6 +10,7 @@ interface Props {
 
 export function VisualFade({ data, onComplete }: Props) {
   const overlayRef = useRef<HTMLDivElement>(null);
+  const { overlayTarget } = useMagidHost();
   const transitionType = data['transition-type'];
   const durationMs = parseInt(data['transition-length'] ?? '400', 10);
   const target = data['transition-target'] ?? '#000000';
@@ -33,11 +36,12 @@ export function VisualFade({ data, onComplete }: Props) {
     }
   }, [transitionType, durationMs, blocking, onComplete]);
 
-  return (
+  // Over the window in the full app; over the Magid area when embedded.
+  const overlay = (
     <div
       ref={overlayRef}
       style={{
-        position: 'fixed',
+        position: overlayTarget ? 'absolute' : 'fixed',
         inset: 0,
         backgroundColor: target,
         pointerEvents: 'none',
@@ -45,4 +49,5 @@ export function VisualFade({ data, onComplete }: Props) {
       }}
     />
   );
+  return overlayTarget ? createPortal(overlay, overlayTarget) : overlay;
 }

@@ -9,6 +9,11 @@
   pointer-events: none;
 }
 
+/* Embedded: in the corner of the Magid area, not of the window. */
+:global(.magid-embedded) .container {
+  position: absolute;
+}
+
 .toast {
   position: relative;
   background: rgba(180, 60, 60, 0.92);

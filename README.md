@@ -54,14 +54,13 @@ This React client is the web counterpart of the JavaFX client and follows the sa
 
 ### Lib layer (`magid-app/src/lib`)
 
-- `elementFactory.ts` converts server JSON into a typed `ParsedElement` union and handles protocol aliases/`responses` recursion.
-- `textTimeline.ts` parses timeline markers for typewriter animation.
-- `cssUtils.ts` injects/clears server-provided stylesheets dynamically.
+- Response parsing and timeline markers live in `@magiden/client-core` (`ELEMENT_PARSERS`, `parseTextSegments`).
+- `cssUtils.ts` injects/clears server-provided stylesheets of one Magid instance (scoped to it when embedded).
 - `renderText.tsx` handles line-break-preserving text rendering helpers.
 
 ### State management (`magid-app/src/store`)
 
-This project uses **Zustand** (`magidStore.ts`) as the single shared state container for connection status, parsed elements, config/env vars, CSS state, and command loading/error flow.
+This project uses **Zustand** (`magidStore.ts`): each mounted Magid gets its own store (over its own core client) for connection status, parsed elements, config/env vars, CSS state, and command loading/error flow, reached through a React context.
 
 Zustand was selected because it fits the app's protocol-driven architecture:
 
@@ -161,12 +160,40 @@ npm run build
 
 Build output is generated in `magid-app/dist/`.
 
+## Embedding Magid in a page
+
+Magid can also live inside one element of a page that isn't its own, without an iframe:
+
+```powershell
+npm run build:embed   # → magid-app/dist-embed/magid-embed.js + magid-embed.css (deploy both side by side)
+```
+
+```html
+<section id="story" style="height: 600px"></section>
+<script type="module">
+  import { mountMagid } from './magid-embed.js';
+  const magid = mountMagid(document.getElementById('story'), {
+    baseUrl: 'https://stories.example.org',
+    story: 'oasis/oasis.xml',        // loaded for a new session; a returning player resumes their session
+  });
+  // magid.unmount();
+</script>
+```
+
+By default the story renders into a shadow root of the element, so the page's CSS and the story's CSS don't affect
+each other, and only the story is shown (no header, Options or lobby). Options: `chrome: 'full'`, `isolation: 'none'`
+(CSS in the page's `<head>`, scoped to the element), `fullscreen: 'element'`, `storagePrefix`, `clientConfig`.
+The page's origin must be in the server's `magid.server.allowed-cors-origins`. An `<iframe>` of the full app is the
+zero-effort alternative. Try it in dev at `http://localhost:5173/examples/embed.html`; design and decisions are in
+[`EMBEDDING-PLAN.md`](EMBEDDING-PLAN.md).
+
 ## Available scripts (inside `magid-app`)
 
 | Command | Description |
 |---|---|
 | `npm run dev` | Start the development server with HMR |
 | `npm run build` | Type-check and build for production |
+| `npm run build:embed` | Build the embeddable Magid (`dist-embed/`) |
 | `npm run preview` | Preview the production build locally |
 | `npm run lint` | Run ESLint |
 | `npm run test` | Run tests once |

@@ -1,6 +1,5 @@
-import { createRoot } from 'react-dom/client'
-import './index.css'
-import App from './App.tsx'
+import './app-page.css'
+import { mountMagid } from './embed/mountMagid'
 
-createRoot(document.getElementById('root')!).render(<App />)
-
+// The full app: Magid owns the page. Embedding pages use the embed build's mountMagid instead (src/embed/index.ts).
+mountMagid(document.getElementById('root')!, { mode: 'app' })

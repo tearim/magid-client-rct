@@ -5,10 +5,12 @@ import { ServerLobbyPage } from './components/ServerLobbyPage';
 import { OptionsModal } from './components/OptionsModal';
 import { ServerStatsDashboard } from './components/ServerStatsDashboard';
 import { ToastContainer } from './components/ToastContainer';
-import { useMagidStore } from './store/magidStore';
+import {
+  useClientConfig, useMagidStore, useMagidStoreApi, useMountOptions, usePrefs, useUrlHistory,
+} from './store/magidStore';
 import { useImpliedClasses } from './hooks/useImpliedClasses';
-import { prefs, PREF_KEYS, urlHistory } from './prefs/prefHelper';
-import { clientConfig } from './config/clientConfig';
+import { PREF_KEYS } from './prefs/prefHelper';
+import { DEFAULT_SERVER } from './embed/options';
 import styles from './App.module.css';
 
 export default function App() {
@@ -16,6 +18,11 @@ export default function App() {
           menuClass, sessionId, endSession, serverConnected, connectivityBlockedError } = useMagidStore();
 
   const impliedMenuClass = useImpliedClasses(menuClass);
+  const prefs = usePrefs();
+  const urlHistory = useUrlHistory();
+  const clientConfig = useClientConfig();
+  const storeApi = useMagidStoreApi();
+  const { chrome, baseUrl: mountBaseUrl, story } = useMountOptions();
 
   const debugAlwaysAllowConnectivity = prefs.getBoolean(PREF_KEYS.DEBUG_ALWAYS_ALLOW_CONNECTIVITY);
   const connectDisabled = !!connectivityBlockedError && !debugAlwaysAllowConnectivity;
@@ -36,7 +43,21 @@ export default function App() {
 
   // Startup sequence
   useEffect(() => {
-    const savedUrl = prefs.get(PREF_KEYS.SERVER_ADDRESS, 'http://localhost:8090');
+    if (chrome === 'story') {
+      // The operator chose server and story (mount options); a stored session resumes where the player left off, and
+      // only a new session (none stored, or the stored one expired) loads the story.
+      setBaseUrl(mountBaseUrl ?? DEFAULT_SERVER);
+      const startStory = async () => {
+        const storedSession = storeApi.getState().sessionId;
+        await sendCommand('');
+        const newSession = !storedSession || storeApi.getState().sessionId !== storedSession;
+        if (story && newSession && await selectStory(story)) await sendCommand('');
+      };
+      void startStory();
+      return;
+    }
+
+    const savedUrl = prefs.get(PREF_KEYS.SERVER_ADDRESS, mountBaseUrl ?? DEFAULT_SERVER);
     setBaseUrl(savedUrl);
 
     async function startup() {
@@ -89,6 +110,24 @@ export default function App() {
     }
     setShowOptions(true);
   };
+
+  if (chrome === 'story') {
+    return (
+      <div className={styles.shell}>
+        {connectivityBlockedError && !debugAlwaysAllowConnectivity && (
+          <div className={styles.blockedBanner} role="alert">
+            <strong>[{connectivityBlockedError.code}]</strong> {connectivityBlockedError.message}
+          </div>
+        )}
+        <main className={[styles.main, impliedMenuClass].filter(Boolean).join(' ')}>
+          {elements.length > 0
+            ? <MagidRoot elements={elements} />
+            : <div className={styles.storyStatus}>{statusMsg || (isLoading ? 'Loading…' : '')}</div>}
+        </main>
+        <ToastContainer />
+      </div>
+    );
+  }
 
   return (
     <div className={styles.shell}>

@@ -1,6 +1,11 @@
 # Plan: Magid as a full app or inside an element of any page
 
-Status: proposal (2026-11-08), nothing implemented yet.
+Status (2026-11-08): steps 1–7 implemented, except the optional `<magid-story>` custom element and a React
+peer-dependency build. Step 1 is in `@magiden/client-core` 0.6.0. Checked in headless Chrome with oasis and alias-world
+(the dev sources and the built bundle, both isolation modes) and in jsdom tests (`embed/mountMagid.test.tsx`).
+Differences from the text below: `scopeStylesheet` returns `{ css, documentCss }` (`@font-face` and `@property`); the
+host has `setWindowSize(w, h)` instead of an element; story CSS isn't fetched as text in the full app (unchanged
+`<link>`s).
 
 ## Goal
 
@@ -155,19 +160,21 @@ Each step leaves both modes working. Steps 1 and 2 change nothing visible.
 7. **Docs**: README "Embedding" (iframe vs `mountMagid`, options, CORS), CLAUDE.md architecture, authoring notes
    for story CSS that embeds well (no `100vh`, no reliance on `body`).
 
-## Decisions for the owner
+## Decisions (owner, 2026-11-08)
 
-- **Default isolation:** shadow root (recommended: real isolation both ways) or scoping (host can style Magid)?
-- **Chrome when embedded:** story only (recommended), or keep the header/Options for embedders who want them?
-- **Fullscreen when embedded:** off by default, with the host opting in (recommended)?
-- **`-mg-window-width/-height` when embedded:** size the Magid area (recommended), or ignore them?
-- **React for hosts:** bundled only at first (recommended), or also a peer-dependency build right away?
-- **`scopeStylesheet` in the core:** yes (recommended, the `-pure` client needs it too)?
+- **Default isolation:** shadow root; scoping stays available as `isolation: 'none'`.
+- **Chrome when embedded:** story only by default; `chrome: 'full'` is available.
+- **Fullscreen when embedded:** off by default; the host opts in with `fullscreen: 'element'`.
+- **`-mg-window-width/-height` when embedded:** they size the Magid area.
+- **React for hosts:** bundled (a peer-dependency build can come later).
+- **`scopeStylesheet`:** in the core.
 
 ## Risks
 
 - Story CSS written for a full page (`100vh`, `position: fixed`, `body` backgrounds) will look different in a
   container. It's correct but surprising, so the authoring notes need examples.
 - Fonts: the `@font-face` lifting must deduplicate and must not rename font families.
+- CSS custom properties inherit through the shadow boundary (`all: initial` doesn't reset them): a story that uses a
+  variable it never defines picks up the host page's value of that name.
 - Host pages with a strict CSP may block blob/`<style>` injection; the docs should list the CSP needs (`style-src`
   with blob:/nonce, `connect-src` for the server).
