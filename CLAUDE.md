@@ -176,8 +176,8 @@ Two independent CSS mechanisms exist — don't confuse them:
 
 ### Display text: typewriter, typing styles, HTML
 
-`useTypewriter` (`magid-app/src/hooks/useTypewriter.ts`) reveals text over time from the core's `DCSTP_` timeline and
-typing config (classes `type-by-letter-…`, `type-by-word-…`, `animation-resets-…`). `MenuScene` gates detached "append"
+`useTypewriter` (`magid-app/src/hooks/useTypewriter.ts`) plays the core's `typingSchedule` (the `DCSTP_` timeline and
+typing config: classes `type-by-letter-…`, `type-by-word-…`, `animation-resets-…`), as magid-client-js does. `MenuScene` gates detached "append"
 elements on `typingComplete` so they don't appear mid-typing.
 
 Narration and menu descriptions go through the core's
