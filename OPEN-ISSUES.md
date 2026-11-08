@@ -7,15 +7,6 @@ Delete an entry once it's resolved. Each entry: what's wrong, where, why it matt
 
 ## Rendering
 
-### R2. An implied `type-by-word-*` overrides an explicit `type-by-letter-*` (2026-10-21)
-- `content/oasis/scenes/hermit.xmls:67` has `class="hermit-talking type-by-letter-40"`; the var
-  `implied-classes-of: hermit-talking*` adds `type-by-word-50`. `getConsequentalTypingConfig` then sets both
-  `typeEachLetter` and `typeEachWord`, and `NarrationText` checks word after letter, so the narration types by **word**
-  (at 40 ms, the letter speed), against what the author wrote.
-- Precedence between explicit and implied classes only works within the same family (first `type-by-word-*` wins).
-- Fix idea: in `getConsequentalTypingConfig`, let whichever `type-by-*` class comes first in the string win, so explicit
-  classes (always first) beat implied ones.
-
 ### R4. Menu "append" detached elements never appear when the description has `DCSTP_` markers (2026-10-23)
 - `MenuScene.tsx`: `typingComplete = displayed === timeline`, but `useTypewriter` ends with the marker-free text, so with
   markers the comparison never holds and `appendEls` stay hidden. (Same before HTML support, with `rawDesc`.)
