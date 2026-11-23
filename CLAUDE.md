@@ -45,7 +45,7 @@ exists, and records the current test/type/lint baseline. Then:
 
 The server lives in `C:\developer\com.zarterstein` (Java, Maven). It is the source of truth for the wire protocol:
 command handling is in `story-server/agnostic` (`MagidServerCoreActions`, `MagidServerRouter`), and the MagidML tag
-reference is `MAGID-XML-DSL.md` there. Story content (for real `magid:///…` URLs, CSS classes, `implied-classes-of:` vars)
+reference is `MAGIDML-TAG-REFERENCE.md` there. Story content (for real `magid:///…` URLs, CSS classes, `implied-classes-of:` vars)
 is in its `content/` directory. Read it when a protocol question comes up; don't change it from here.
 
 ## What this is
@@ -188,6 +188,13 @@ and `magid-app/src/lib/renderHtml.tsx` builds React elements from the tree (neve
 `style` → `parseMagidCss`; anchor nodes via its `renderAnchor` callback → `DetachedElement`). The last-letters/words effects apply to the
 last text node only, the isolating ones to every text node. The HTML rules themselves (what's prose, what's removed, the
 `<title>`/`<img>` processors) are documented in the core.
+
+**Streamed texts** (the core's `streams.ts`, server `development-docs/STREAMING-DESIGN.md`): the instance's client runs
+with `streams: true` (a server without streams ignores it). The core turns each `⟪stream:<id>⟫` placeholder into a
+`stream` node (one character of the timeline); `renderHtml`'s `renderStream` callback renders it as `StreamText`, which
+shows `streams[id].text` from the store as plain text and stays current (classes `magid-stream`,
+`magid-stream-open` / `-ok` / `-failed` / `-cancelled` / `-timeout`). The typewriter reaches the stream and moves on;
+the stream is never typed out. `dispose()` closes the stream connection.
 
 `renderWithBreaks` (`magid-app/src/lib/renderText.tsx`) renders the text with `TypingStyle` (`byLetter`, `byWord`, and
 `…Isolating` variants) and keeps module-level reset bookkeeping, because it is a plain function and must not use hooks.

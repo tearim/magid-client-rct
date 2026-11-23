@@ -65,6 +65,8 @@ export function createMagidInstance(options: ResolvedMountOptions, host: MagidHo
     clientType: CLIENT_TYPE,
     storage: { get: (key) => prefs.get(key) || null, set: (key, value) => prefs.set(key, value) },
     disabledCommands: options.clientConfig.showResetServerButton ? [] : ['reload-xml'],
+    // Streamed texts (the core's streams.ts): a server without them ignores the request and sends whole texts.
+    streams: true,
   });
 
   const store = createStore<MagidState>((set) => ({
@@ -113,6 +115,7 @@ export function createMagidInstance(options: ResolvedMountOptions, host: MagidHo
     host,
     dispose() {
       unsubscribers.forEach((unsubscribe) => unsubscribe());
+      client.closeStreams();
       stylesheets.clear();
     },
   };

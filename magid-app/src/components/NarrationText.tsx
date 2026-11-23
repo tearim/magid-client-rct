@@ -11,6 +11,7 @@ import { useMagidHost, useMagidStore, usePrefs } from '../store/magidStore';
 import { useImpliedClasses } from '../hooks/useImpliedClasses';
 import { DetachedElement } from './DetachedElement';
 import { MagidImage } from './MagidImage';
+import { StreamText } from './StreamText';
 
 interface Props {
   data: NarrationResponse;
@@ -112,6 +113,7 @@ export function NarrationText({ data, onComplete }: Props) {
             const d = detached?.find((e) => e['text-anchor'] === anchor);
             return d && <DetachedElement data={d} />;
           },
+          (id) => <StreamText id={id} />,
         )}
       </div>
   );

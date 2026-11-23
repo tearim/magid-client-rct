@@ -4,6 +4,7 @@ import {
 } from '@magiden/client-core';
 import { CommandButton } from './CommandButton';
 import { DetachedElement } from './DetachedElement';
+import { StreamText } from './StreamText';
 import { useAudio } from '../hooks/useAudio';
 import { useTypewriter } from '../hooks/useTypewriter';
 import { PREF_KEYS } from '../prefs/prefHelper';
@@ -90,6 +91,7 @@ export function MenuScene({ data }: Props) {
               const d = anchorEls.find((e) => e['text-anchor'] === anchor);
               return d && <DetachedElement data={d} />;
             },
+            (id) => <StreamText id={id} />,
           )}
           {typingComplete && appendEls.map((d, i) => <DetachedElement key={`append-${i}`} data={d} />)}
         </div>
