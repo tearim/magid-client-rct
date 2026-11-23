@@ -192,8 +192,8 @@ last text node only, the isolating ones to every text node. The HTML rules thems
 **Streamed texts** (the core's `streams.ts`, server `development-docs/STREAMING-DESIGN.md`): the instance's client runs
 with `streams: true` (a server without streams ignores it). The core turns each `⟪stream:<id>⟫` placeholder into a
 `stream` node (one character of the timeline); `renderHtml`'s `renderStream` callback renders it as `StreamText`, which
-shows `streams[id].text` from the store as plain text and stays current (classes `magid-stream`,
-`magid-stream-open` / `-ok` / `-failed` / `-cancelled` / `-timeout`). The typewriter reaches the stream and moves on;
+shows `streams[id].text` from the store as plain text and stays current (classes from the core's
+`streamClassName`: `magid-stream`, `-warming-up` / `-receiving` / `-finished`, and the status once finished). The typewriter reaches the stream and moves on;
 the stream is never typed out. `dispose()` closes the stream connection.
 
 `renderWithBreaks` (`magid-app/src/lib/renderText.tsx`) renders the text with `TypingStyle` (`byLetter`, `byWord`, and
